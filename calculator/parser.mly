@@ -3,7 +3,7 @@
 /* TODO: add ->, :, (...), */
 
 %token LET COLON SEMI
-%token INT
+%token INT SET
 %token PLUS MINUS TIMES DIVIDE ASN EOF
 %token <int> LITERAL
 %token <string> VARIABLE
@@ -18,7 +18,8 @@
 %%
 
 typ:
-  INT   { Int }
+  INT		 { Int }
+| typ SET    { Set($1) }
 
 expr:
   expr PLUS   expr SEMI { Binop($1, Add, $3) }

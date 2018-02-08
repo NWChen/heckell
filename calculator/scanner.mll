@@ -12,6 +12,7 @@ rule tokenize = parse
 | '*' { TIMES }
 | '/' { DIVIDE } (* Types *)
 | "int" { INT }
+| "set" { SET }
 | "let" { LET }
 | ':'   { COLON }
 | ';'   { SEMI }
