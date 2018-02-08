@@ -29,4 +29,4 @@ expr:
 | LET VARIABLE COLON typ SEMI { Decl($2, $4) } /* We treat `vdecl`s as expressions for now, but will probably have to isolate this later */
 | LITERAL          { Lit($1) }
 | VARIABLE         { Var($1) }
-| VARIABLE ASN expr MI { Asn($1, $3) }
+| VARIABLE ASN expr SEMI { Asn($1, $3) }
