@@ -1,6 +1,12 @@
 type operator = Add | Sub | Mul | Div
 
-type typ = Int (* and more, to be added ... *)
+(* type prim_typ = Int | Bool | Real | Char
+ *)
+type typ = 
+    Set of typ
+  | Int
+(*   | Unit of prim_typ
+ *)
 type bind = string * typ
 
 type expr =
@@ -10,6 +16,14 @@ type expr =
   | Seq of expr * expr 
   | Asn of string * expr
   | Var of string
+
+ type stmt =
+    Block of stmt list
+  | Expr of expr
+  | Return of expr
+  | If of expr * stmt * stmt
+  | For of expr * expr * expr * stmt
+  | While of expr * stmt
 
 (* TODO: operator for `->` (TYPE) *)
 (* TODO: operator for `(...)` (PARAMS) *)
