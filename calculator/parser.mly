@@ -2,7 +2,10 @@
 
 /* TODO: add ->, :, (...), */
 
-%token LET COLON SEMI
+%token LPAREN RPAREN
+%token LBRACE RBRACE
+%token LBRACKET RBRACKET 
+%token LET COLON COMMA SEMI DSEMI ARROW
 %token INT SET
 %token PLUS MINUS TIMES DIVIDE EQUAL EOF
 %token <int> LITERAL
@@ -10,9 +13,12 @@
 %token <string> ID
 
 
+
+/* TODO: Precedence and associativity */
 %left EQUAL
 %left PLUS MINUS
 %left TIMES DIVIDE
+
 
 %start stmt
 %type <Ast.expr> stmt
@@ -20,7 +26,7 @@
 %%
 
 program:
-  decls EOF { $1 }
+  stmt_list EOF { $1 }
 
 /*decls:
   | decls stmt { $2::$1 }*/
@@ -39,8 +45,8 @@ typ:
 stmt:
   stmt SEMI stmt        { Seq($1, $3) }
 | ID EQUAL expr SEMI      { Asn($1, $3) }
-| LET ID COLON typ SEMI { ($2, $4) }
-| ID LPAREN formal_opt RPAREN EQUAL stmt_list DSEMI  
+| LET ID COLON typ SEMI { ($2, $4) }  /* binding of variables and functions */
+| ID LPAREN formal_opt RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
     { Asn($1, FuncDef({
         formals: $3;
         body: $6;
