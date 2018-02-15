@@ -7,6 +7,7 @@
 %token PLUS MINUS TIMES DIVIDE ASN EOF
 %token <int> LITERAL
 %token <string> VARIABLE
+%token EOF
 
 %left ASN
 %left PLUS MINUS
@@ -16,6 +17,12 @@
 %type <Ast.expr> expr
 
 %%
+
+program:
+  decls EOF { $1 }
+
+decls:
+  | decls expr { $2::$1 }
 
 typ:
   INT		 { Int }
