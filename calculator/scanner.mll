@@ -1,6 +1,8 @@
 { open Parser }
 
-(* TODO: add `->` *)
+let letter = ['a'-'z' 'A'-'Z' '_']
+let digit = ['a'-'z' 'A'-'Z' '0'-'9']
+
 (* TODO: add `:` *)
 (* TODO: add `(...)` *)
 (* TODOLATER: add `,` to delimit parameters *)
@@ -16,8 +18,8 @@ rule tokenize = parse
 | "let" { LET }
 | ':'   { COLON }
 | ';'   { SEMI }
-
-| '=' { ASN }
-| ['0'-'9']+ as lit { LITERAL(int_of_string lit) }
-| ['a'-'z']+ as lit { VARIABLE(lit) }
+| '=' { EQUAL }
+| digit+ as lit { LITERAL(int_of_string lit) }
+| letter (letter | digit)* as lit { ID(lit) }
 | eof { EOF }
+| "->"  { ARROW }

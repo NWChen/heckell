@@ -1,5 +1,5 @@
 type op = 
-  Add | Sub | Mul | Div 
+  Add | Sub | Mul | Div
 
 type typ = prim_typ | der_typ
 
@@ -7,8 +7,9 @@ type prim_typ = Int | Bool | Real | Char
 
 type der_typ =
   | Set of typ
-  (* | Tuple of typ list *) 
+  (* | Tuple of typ list  *)
   (* | Unit of prim_typ *)
+  | Func of typ * typ (* typ1: args, typ2: output *)
  
 
 type bind = string * typ
@@ -19,10 +20,10 @@ type expr =
   | Decl of string * typ
   | Asn of string * expr
   | Id of string
-  (* TODO: | Func of ... *)
+  | FuncDef of func_def
   (* | Seq of expr * expr  *)
 
- type stmt =
+type stmt =
     Block of stmt list
   | Expr of expr
   (* | Return of expr *)
@@ -30,7 +31,20 @@ type expr =
   (* | For of expr * expr * expr * stmt *)
   (* | While of expr * stmt *)
 
+(* Function stuff *)
 
+(* type func_decl = {
+  fname : string;
+  typ : typ; (* int * int - > int *)
+}
+ *)
+
+type func_def = {
+  formals : expr list; (* id list *)
+  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
+}
+
+(* Program *)
 
 type program = stmt list
 

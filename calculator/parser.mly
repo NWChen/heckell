@@ -22,7 +22,7 @@ program:
   decls EOF { $1 }
 
 decls:
-  | decls expr { $2::$1 }
+  | decls stmt { $2::$1 }
 
 typ:
   INT		 { Int }
