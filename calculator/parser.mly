@@ -13,7 +13,7 @@
 %left TIMES DIVIDE
 
 %start stmt
-%type <Ast.expr> stmt
+%type <Ast.stmt> stmt
 
 %%
 
@@ -24,7 +24,7 @@ typ:
 stmt:
   stmt SEMI stmt        { Seq($1, $3) }
 | ID ASN expr SEMI      { Asn($1, $3) }
-| LET ID COLON typ SEMI { ($2, $4) }
+| LET ID COLON typ SEMI { Decl($2, $4) }
 
 expr:
   expr PLUS   expr      { Binop($1, Add, $3) }

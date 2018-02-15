@@ -13,13 +13,13 @@ type bind = string * typ
 type expr =
     Binop of expr * operator * expr
   | Lit of int
-  | Decl of string * typ
-  | Asn of string * expr
   | Id of string
   (* TODO: | Func of ... *)
 
- type stmt =
+type stmt =
     Seq of stmt * stmt
+  | Asn of string * expr
+  | Decl of string * typ
   | Expr of expr
   (* | Return of expr *)
   (* | If of expr * stmt * stmt *)
