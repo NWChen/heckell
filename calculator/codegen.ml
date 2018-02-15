@@ -20,13 +20,14 @@ let rec eval map expr =
   | Var(v) -> (StringMap.find v map, map)
 
   | Binop(e1, op, e2) ->
-    let pair1 = eval map e1 and pair2 = eval map e2 in
+    let pair1 = eval map e1 in (*and pair2 = eval m2 e2 in*)
+        let pair2 = eval (snd pair1) e2 in
     let v1 = fst pair1 and v2 = fst pair2 in
-    match op with
-      Add -> (v1 + v2, map)
-      | Sub -> (v1 - v2, map)
-      | Mul -> (v1 * v2, map)
-      | Div -> (v1 / v2, map)
+    ( match op with 
+      Add -> v1 + v2
+      | Sub -> v1 - v2
+      | Mul -> v1 * v2
+      | Div -> v1 / v2, (snd pair2))
 
 let () =
   let lex_buf = Lexing.from_channel stdin in
