@@ -24,7 +24,7 @@ type expr =
   (* | Seq of expr * expr  *)
 
 type stmt =
-    Block of stmt list
+    Seq of stmt * stmt
   | Expr of expr
   (* | Return of expr *)
   (* | If of expr * stmt * stmt *)
