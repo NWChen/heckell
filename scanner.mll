@@ -1,7 +1,7 @@
 { open Parser }
 
 let letter = ['a'-'z' 'A'-'Z' '_']
-let digit = ['a'-'z' 'A'-'Z' '0'-'9']
+let digit = ['0'-'9']
 
 (* TODO: add `:` *)
 (* TODO: add `(...)` *)
