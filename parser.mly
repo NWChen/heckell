@@ -33,21 +33,8 @@
 program:
   stmt_list EOF { $1 }
 
-stmt_list:
-    /* nothing */  { [] }
-  | stmt_list stmt { $2 :: $1 }
-
-stmt:
-  stmt SEMI stmt           { Seq($1, $3) }
-| ID EQUAL expr SEMI       { Asn($1, $3) }
-| LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_opt RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
-    { Asn($1, FuncDef({
-        formals = $3;
-        body = $6;
-      })) }
-
-typ:
+/* note this type is typ, NOT prim_typ */
+typ: 
   INT            { PrimTyp(Int) }
 | typ ARROW typ  { Func($1, $3) }
 | typ SET        { Set($1) }
@@ -60,9 +47,20 @@ expr:
 | expr DIVIDE expr      { Binop($1, Div, $3) }
 | LITERAL               { Lit($1) }
 
-formal_opt:
-  /* nothing */ { [] }
-| formal_list   { List.rev $1 }
+stmt_list:
+    /* nothing */  { [] }
+  | stmt_list stmt { $2 :: $1 }
+
+stmt:
+  stmt SEMI stmt           { Seq($1, $3) }
+| ID EQUAL expr SEMI       { Asn($1, $3) }
+| LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
+| ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
+                           { Asn($1, FuncDef($3, $6)) }
+
+/*formal_opt:
+                { [] }
+| formal_list   { List.rev $1 }*/
 
 formal_list:
   formal_list COMMA ID  { Id($3) :: $1 }
