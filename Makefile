@@ -1,6 +1,6 @@
-TARFILES = Makefile scanner.mll parser.mly ast.ml codegen.ml
+TARFILES = Makefile scanner.mll parser.mly ast.ml #codegen.ml
 
-OBJS = parser.cmo scanner.cmo codegen.cmo
+OBJS = parser.cmo scanner.cmo #codegen.cmo
 
 codegen : $(OBJS)
 	ocamlc -o codegen $(OBJS)
