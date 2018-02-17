@@ -1,2 +1,7 @@
-let x: int;
-x = 3;
+let foo: int;
+foo = 100;
+
+let x: real;
+x = 3.0;
+let y: bool;
+y = true;
