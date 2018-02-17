@@ -11,6 +11,8 @@
 
 %token PLUS MINUS TIMES DIVIDE EQUAL
 %token <int> LITERAL
+%token <string> REALLIT
+%token <bool> BOOLLIT
 %token <string> ID
 %token EOF
 
@@ -61,6 +63,8 @@ expr:
 | expr TIMES  expr      { Binop($1, Mul, $3) }
 | expr DIVIDE expr      { Binop($1, Div, $3) }
 | LITERAL               { Lit($1) }
+| REALLIT               { RealLit($1) }
+| BOOLLIT               { BoolLit($1) }
 
 formal_opt:
   /* nothing */ { [] }
