@@ -67,8 +67,9 @@ let string_of_prim_typ = function
   | Real -> "real"
   | Char -> "char"
 
-let string_of_typ typ =
-  string_of_prim_typ typ
+let string_of_typ = function
+    PrimTyp(t) -> string_of_prim_typ t
+  | _ -> "other type"
 
 let rec string_of_expr = function
     Lit(l) -> string_of_int l
