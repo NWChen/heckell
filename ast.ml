@@ -17,9 +17,10 @@ type typ =
 type expr =
     Binop of expr * op * expr
   | Lit of int
+  | RealLit of string
+  | BoolLit of bool
   | Id of string
   | FuncDef of func_def
-  (* | Seq of expr * expr  *)
 
 and func_def = {
   formals : expr list; (* id list *)
@@ -27,8 +28,7 @@ and func_def = {
 }
 
 and stmt =
-    Seq of stmt * stmt
-  | Asn of string * expr
+    Asn of string * expr
   | Decl of string * typ
   | Expr of expr
 
@@ -51,3 +51,38 @@ type program = stmt list
 
 (* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)
+
+
+(* Pretty-printing function *)
+
+let string_of_op = function
+    Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+
+let string_of_prim_typ = function
+    Int -> "int"
+  | Bool -> "bool"
+  | Real -> "real"
+  | Char -> "char"
+
+let string_of_typ typ =
+  string_of_prim_typ typ
+
+let rec string_of_expr = function
+    Lit(l) -> string_of_int l
+  | RealLit(l) -> l
+  | BoolLit(true) -> "true"
+  | BoolLit(false) -> "false"
+  | Id(s) -> s
+  | Binop(e1, o, e2) ->
+      string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+
+let string_of_stmt = function
+    Asn(s, e) -> s ^ "=" ^ string_of_expr e
+  | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
+  | Expr(e) -> string_of_expr e
+
+let string_of_program stmts =
+  String.concat "" (List.map string_of_stmt stmts) ^ "\n"

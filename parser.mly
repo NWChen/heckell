@@ -34,12 +34,11 @@ program:
   stmt_list EOF { $1 }
 
 stmt_list:
-    /* nothing */  { [] }
-  | stmt_list stmt { $2 :: $1 }
+  /* nothing */  { [] }
+| stmt_list stmt { $2 :: $1 }
 
 stmt:
-  stmt SEMI stmt           { Seq($1, $3) }
-| ID EQUAL expr SEMI       { Asn($1, $3) }
+  ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_opt RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
     { Asn($1, FuncDef({
