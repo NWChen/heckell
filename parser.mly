@@ -11,6 +11,8 @@
 
 %token PLUS MINUS TIMES DIVIDE EQUAL
 %token <int> LITERAL
+%token <string> REALLIT
+%token <bool> BOOLLIT
 %token <string> ID
 %token EOF
 
@@ -49,13 +51,14 @@ expr:
 | expr TIMES  expr      { Binop($1, Mul, $3) }
 | expr DIVIDE expr      { Binop($1, Div, $3) }
 | LITERAL               { Lit($1) }
+| REALLIT               { RealLit($1) }
+| BOOLLIT               { BoolLit($1) }
 
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-  stmt SEMI stmt           { Seq($1, $3) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
