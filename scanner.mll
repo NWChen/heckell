@@ -19,9 +19,11 @@ rule tokenize = parse
 | '-'       { MINUS }
 | '*'       { TIMES }
 | '/'       { DIVIDE } (* Types *)
+| '|'       { PIPE }
 | "int"     { INT }
 | "set"     { SET }
 | "let"     { LET }
+| "in"      { IN }
 | ':'       { COLON }
 | ';'       { SEMI }
 | ";;"      { DSEMI }

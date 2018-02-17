@@ -14,11 +14,16 @@ type typ =
 
 (* type bind = string * typ *)
 
+
+
 type expr =
     Binop of expr * op * expr
   | Lit of int
+  | SetLit of expr list
+  | SetBuilder of stmt * expr
   | Id of string
-  | FuncDef of expr list * stmt list (* param ids * function body *)
+  | FuncDef of string list * stmt list (* param ids * function body *)
+  | FuncCall of string * expr list
   (* | Seq of expr * expr  *)
 
 and stmt =
@@ -26,6 +31,7 @@ and stmt =
   | Asn of string * expr
   | Decl of string * typ
   | Expr of expr
+  | Iter of string * expr
 
 (* type func_def = {
   formals : expr list; (* id list *)
