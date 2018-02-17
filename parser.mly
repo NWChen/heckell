@@ -7,7 +7,7 @@
 %token LBRACE RBRACE
 
 %token LET COLON COMMA SEMI DSEMI ARROW
-%token INT SET 
+%token INT BOOL REAL CHAR SET 
 
 %token PLUS MINUS TIMES DIVIDE EQUAL
 %token <int> LITERAL
@@ -36,6 +36,9 @@ program:
 /* note this type is typ, NOT prim_typ */
 typ: 
   INT            { PrimTyp(Int) }
+| BOOL           { PrimTyp(Bool) }
+| REAL           { PrimTyp(Real) }
+| CHAR           { PrimTyp(Char) }
 | typ ARROW typ  { Func($1, $3) }
 | typ SET        { Set($1) }
 /* Tuple type */
