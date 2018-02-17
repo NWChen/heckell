@@ -35,7 +35,8 @@
 program:
   stmt_list EOF { $1 }
 
-typ:
+/* note this type is typ, NOT prim_typ */
+typ: 
   INT            { PrimTyp(Int) }
 | BOOL           { PrimTyp(Bool) }
 | REAL           { PrimTyp(Real) }
@@ -58,14 +59,13 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    stmt SEMI stmt           { Seq($1, $3) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
                            { Asn($1, FuncDef($3, $6)) }
 
 /*formal_opt:
-  /* nothing */ { [] }
+                { [] }
 | formal_list   { List.rev $1 }*/
 
 formal_list:

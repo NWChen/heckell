@@ -20,17 +20,18 @@ type expr =
   | RealLit of string
   | BoolLit of bool
   | Id of string
-  | FuncDef of expr list * stmt list
-
-and func_def = {
-  formals : expr list; (* id list *)
-  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
-}
+  | FuncDef of expr list * stmt list (* param ids * function body *)
+  (* | Seq of expr * expr  *)
 
 and stmt =
     Asn of string * expr
   | Decl of string * typ
   | Expr of expr
+
+(* type func_def = {
+  formals : expr list; (* id list *)
+  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
+} *)
 
   (* | Return of expr *)
   (* | If of expr * stmt * stmt *)
