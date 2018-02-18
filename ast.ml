@@ -28,31 +28,10 @@ and stmt =
   | Decl of string * typ
   | Expr of expr
 
-(* type func_def = {
-  formals : expr list; (* id list *)
-  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
-} *)
-
-  (* | Return of expr *)
-  (* | If of expr * stmt * stmt *)
-  (* | For of expr * expr * expr * stmt *)
-  (* | While of expr * stmt *)
-
-(* Function stuff *)
-
-(* type func_decl = {
-  fname : string;
-  typ : typ; (* int * int - > int *)
-}
- *)
-
-(* Program *)
-
 type program = stmt list
 
 (* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)
-
 
 (* Pretty-printing function *)
 
@@ -68,8 +47,20 @@ let string_of_prim_typ = function
   | Real -> "real"
   | Char -> "char"
 
-let string_of_typ = function
+(*
+ *
+ *
+  | Set of typ 
+  (* | Tuple of typ list  *)
+  (* | Unit of prim_typ *)
+  | Func of typ * typ (* typ1: args, typ2: output *)
+  | PrimTyp of prim_typ
+ *)
+
+
+let rec string_of_typ = function (* TODO: could a recursive type definition be problematic? *)
     PrimTyp(t) -> string_of_prim_typ t
+  | Func(t1, t2) -> string_of_typ t1 ^ "->" ^ string_of_typ t2 ^ ";"
   | _ -> "other type"
 
 let rec string_of_expr = function
@@ -91,3 +82,23 @@ and string_of_stmt = function
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
   String.concat "\n" (List.map string_of_stmt (List.rev stmts)) ^ "\n"
+
+(* type func_def = {
+  formals : expr list; (* id list *)
+  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
+} *)
+
+  (* | Return of expr *)
+  (* | If of expr * stmt * stmt *)
+  (* | For of expr * expr * expr * stmt *)
+  (* | While of expr * stmt *)
+
+(* Function stuff *)
+
+(* type func_decl = {
+  fname : string;
+  typ : typ; (* int * int - > int *)
+}
+ *)
+
+(* Program *)
