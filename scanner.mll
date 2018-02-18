@@ -1,7 +1,7 @@
 { open Parser }
 
 let letter = ['a'-'z' 'A'-'Z' '_']
-let digit = ['a'-'z' 'A'-'Z' '0'-'9']
+let digit = ['0'-'9']
 
 (* TODO: add `:` *)
 (* TODO: add `(...)` *)
@@ -21,6 +21,8 @@ rule tokenize = parse
 | '/'       { DIVIDE } (* Types *)
 | '|'       { PIPE }
 | "int"     { INT }
+| "real"    { REAL }
+| "bool"    { BOOL }
 | "set"     { SET }
 | "let"     { LET }
 | "in"      { IN }
@@ -29,6 +31,9 @@ rule tokenize = parse
 | ";;"      { DSEMI }
 | '='       { EQUAL }
 | digit+ as lit   { LITERAL(int_of_string lit) }
+| digit+ '.' digit+ as reallit { REALLIT(reallit) }
+| "true"    { BOOLLIT(true) }
+| "false"   { BOOLLIT(false) }
 | letter (letter | digit)* as lit { ID(lit) }
 | eof { EOF }
 | "->"      { ARROW }
