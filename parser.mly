@@ -61,8 +61,7 @@ expr_list:
 
 
 expr:
-| LBRACE expr_list RBRACE { SetLit($2) }
-| ID                    { Id($1) }
+  ID                    { Id($1) }
 | LITERAL               { Lit($1) }
 | REALLIT               { RealLit($1) }
 | BOOLLIT               { BoolLit($1) }
@@ -70,6 +69,7 @@ expr:
 | expr MINUS  expr      { Binop($1, Sub, $3) }
 | expr TIMES  expr      { Binop($1, Mul, $3) }
 | expr DIVIDE expr      { Binop($1, Div, $3) }
+| LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
     { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }

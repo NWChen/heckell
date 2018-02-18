@@ -1,5 +1,5 @@
 type op = 
-  Add | Sub | Mul | Div
+  Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type prim_typ = Int | Bool | Real | Char
 
@@ -57,4 +57,3 @@ type program = stmt list
 
 (* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)
-

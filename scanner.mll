@@ -18,8 +18,14 @@ rule tokenize = parse
 | '+'       { PLUS }
 | '-'       { MINUS }
 | '*'       { TIMES }
-| '/'       { DIVIDE } (* Types *)
-| '|'       { PIPE }
+| '/'       { DIVIDE }
+| "=="      { EQ }
+| "!="      { NEQ }
+| '<'       { LT }
+| "<="      { LEQ }
+| ">"       { GT }
+| ">="      { GEQ }
+| '|'       { PIPE } (* Types *)
 | "int"     { INT }
 | "real"    { REAL }
 | "bool"    { BOOL }
