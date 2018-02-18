@@ -27,7 +27,6 @@ and stmt =
     Asn of string * expr
   | Decl of string * typ
   | Expr of expr
-  | Debug of string
 
 type program = stmt list
 (* TODO: op for `->` (TYPE) *)
