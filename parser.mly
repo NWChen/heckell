@@ -7,7 +7,8 @@
 %token LBRACE RBRACE
 
 %token LET IN COLON COMMA SEMI DSEMI ARROW
-%token INT BOOL REAL CHAR SET 
+%token INT BOOL REAL CHAR
+%token SET 
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE
 %token <int> LITERAL
@@ -17,14 +18,16 @@
 %token EOF
 
 /* TODO: Precedence and associativity */
-%nonassoc LET INT SET COLON
+%nonassoc COLON
 %right DSEMI
 %right SEMI
+%left LET
 %left COMMA
 %right EQUAL
 %right ARROW
 %left PLUS MINUS
 %left TIMES DIVIDE
+%left LPAREN LBRACKET
 
 
 %start program
@@ -45,8 +48,21 @@ typ:
 | typ SET        { Set($1) }
 /* Tuple type */
 
+
+stmt_list:
+    /* nothing */  { [] }
+  | stmt_list stmt { $2 :: $1 }
+
+
+expr_list:
+    /* nothing */        { [] }
+  | expr                 { [$1] }
+  | expr_list COMMA expr { $3 :: $1 }
+
+
 expr:
-  ID                    { Id($1) }
+| LBRACE expr_list RBRACE { SetLit($2) }
+| ID                    { Id($1) }
 | LITERAL               { Lit($1) }
 | REALLIT               { RealLit($1) }
 | BOOLLIT               { BoolLit($1) }
@@ -54,19 +70,10 @@ expr:
 | expr MINUS  expr      { Binop($1, Sub, $3) }
 | expr TIMES  expr      { Binop($1, Mul, $3) }
 | expr DIVIDE expr      { Binop($1, Div, $3) }
-| LBRACE expr_list RBRACE { SetLit($2) }
 /* TODO: Allow for set of tuples */
-| LBRACE ID IN expr PIPE expr RBRACE   { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }
+| LBRACE ID IN expr PIPE expr RBRACE   
+    { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }
 
-
-stmt_list:
-    /* nothing */  { [] }
-  | stmt_list SEMI stmt { $3 :: $1 }
-
-
-expr_list:
-    /* nothing */  { [] }
-  | expr_list COMMA expr { $3 :: $1 }
 
 stmt:
 | ID EQUAL expr SEMI       { Asn($1, $3) }

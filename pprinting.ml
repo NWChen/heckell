@@ -26,6 +26,12 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+  | SetLit(el) -> 
+     let rec string_of_expr_list = function
+      | [e] -> string_of_expr e
+      | e :: t -> string_of_expr e ^ ", " ^ string_of_expr_list t
+      | [] -> ""
+    in "{" ^ string_of_expr_list el ^ "}"
 
 let string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
