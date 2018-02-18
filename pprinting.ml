@@ -7,6 +7,12 @@ let string_of_op = function
   | Sub -> "-"
   | Mul -> "*"
   | Div -> "/"
+  | Equal -> "=="
+  | Neq -> "!="
+  | Less -> "<"
+  | Leq -> "<="
+  | Greater -> ">"
+  | Geq -> ">="
 
 let string_of_prim_typ = function
     Int -> "int"
@@ -35,3 +41,4 @@ let string_of_stmt = function
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
   String.concat "\n" (List.map string_of_stmt stmts) ^ "\n"
+  
