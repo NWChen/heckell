@@ -19,13 +19,13 @@
 %token EOF
 
 /* TODO: Precedence and associativity */
-%nonassoc COLON
-%right DSEMI
+/* %nonassoc COLON */
 %right SEMI
-%left LET
+/*%right DSEMI*/
+/*%left LET*/
 %left COMMA
 %right EQUAL
-%right ARROW
+%left ARROW
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left LPAREN LBRACKET
@@ -48,17 +48,6 @@ typ:
 | typ ARROW typ  { Func($1, $3) }
 | typ SET        { Set($1) }
 /* Tuple type */
-
-
-stmt_list:
-    /* nothing */  { [] }
-  | stmt_list stmt { $2 :: $1 }
-
-
-expr_list:
-    /* nothing */        { [] }
-  | expr                 { [$1] }
-  | expr_list COMMA expr { $3 :: $1 }
 
 
 expr:
@@ -86,9 +75,24 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
-                           { Asn($1, FuncDef($3, $6)) }
+| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI  /* function assign definition */
+                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
 | expr SEMI                { Expr($1) }
+
+
+stmt_list:
+  /* nothing */  { [] }
+| stmt_list stmt { $2 :: $1 }
+
+
+expr_list:
+  /* nothing */        { [] }
+| expr                 { [$1] }
+| expr_list COMMA expr { $3 :: $1 }
+
+func_stmt_list:
+| stmt                      { [$1] }
+| func_stmt_list SEMI stmt  { $3 :: $1 }
 
 
 /*formal_opt:
@@ -96,5 +100,5 @@ stmt:
 | formal_list   { List.rev $1 }*/
 
 formal_list:
-  formal_list COMMA ID  { $3 :: $1 }
 | ID                    { [$1] }
+| formal_list COMMA ID  { $3 :: $1 }
