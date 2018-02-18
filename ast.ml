@@ -27,6 +27,7 @@ and stmt =
     Asn of string * expr
   | Decl of string * typ
   | Expr of expr
+  | Debug of string
 
 type program = stmt list
 
@@ -78,6 +79,7 @@ and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
   | Expr(e) -> string_of_expr e
+  | Debug(s) -> "MATCHED TO STMT"
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
