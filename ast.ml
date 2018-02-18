@@ -59,9 +59,9 @@ let string_of_prim_typ = function
 
 
 let rec string_of_typ = function (* TODO: could a recursive type definition be problematic? *)
-    PrimTyp(t) -> string_of_prim_typ t
+    Set(t) -> string_of_typ t 
   | Func(t1, t2) -> string_of_typ t1 ^ "->" ^ string_of_typ t2 ^ ";"
-  | _ -> "other type"
+  | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
     Lit(l) -> string_of_int l
