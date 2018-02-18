@@ -20,9 +20,10 @@ let string_of_prim_typ = function
   | Real -> "real"
   | Char -> "char"
 
-let string_of_typ = function
-    PrimTyp(t) -> string_of_prim_typ t
-  | _ -> "other type"
+let rec string_of_typ = function
+    Set(t) -> string_of_typ t
+  | Func(t1, t2) -> string_of_typ t1 ^ "->" ^ string_of_typ t2 ^ ";"
+  | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
     Lit(l) -> string_of_int l
@@ -32,8 +33,10 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+  | FuncDef(formals, stmts) ->
+      (String.concat "\n" (List.map string_of_expr formals)) ^ "\n" ^ (String.concat "\n" (List.map string_of_stmt stmts))
 
-let string_of_stmt = function
+and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
   | Expr(e) -> string_of_expr e
