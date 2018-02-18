@@ -21,8 +21,8 @@ let string_of_prim_typ = function
   | Char -> "char"
 
 let rec string_of_typ = function
-    Set(t) -> string_of_typ t
-  | Func(t1, t2) -> string_of_typ t1 ^ "->" ^ string_of_typ t2 ^ ";"
+    Set(t) -> "(" ^ string_of_typ t ^ " set)"
+  | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ ") -> (" ^ string_of_typ t2 ^ ")" ^ ";"
   | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
@@ -33,14 +33,9 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | SetLit(el) -> 
-     let rec string_of_expr_list = function
-      | [e] -> string_of_expr e
-      | e :: t -> string_of_expr e ^ ", " ^ string_of_expr_list t
-      | [] -> ""
-    in "{" ^ string_of_expr_list el ^ "}"
+  | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
   | FuncDef(formals, stmts) ->
-      (String.concat "\n" (List.map string_of_expr formals)) ^ "\n" ^ (String.concat "\n" (List.map string_of_stmt stmts))
+      (String.concat "," formals) ^ "\n" ^ (String.concat "\n" (List.map string_of_stmt stmts))
 
 and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
