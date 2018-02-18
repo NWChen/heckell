@@ -33,27 +33,6 @@ and stmt =
   | Expr of expr
   | Iter of string * expr
 
-(* type func_def = {
-  formals : expr list; (* id list *)
-  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
-} *)
-
-  (* | Return of expr *)
-  (* | If of expr * stmt * stmt *)
-  (* | For of expr * expr * expr * stmt *)
-  (* | While of expr * stmt *)
-
-(* Function stuff *)
-
-(* type func_decl = {
-  fname : string;
-  typ : typ; (* int * int - > int *)
-}
- *)
-
-(* Program *)
-
 type program = stmt list
-
 (* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)

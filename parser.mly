@@ -83,11 +83,13 @@ expr:
 
 
 stmt:
+| expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  /* function assign definition */
                            { Asn($1, FuncDef($3, $6)) }
 | expr SEMI                { Expr($1) }
+
 
 /*formal_opt:
                 { [] }
