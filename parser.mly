@@ -60,11 +60,11 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-| expr SEMI                { Asn(* TODO
+| expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-/*| ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  { Asn($1, FuncDef($3, $6)) }*/
-| ID LPAREN expr RPAREN EQUAL expr DSEMI { Debug($1) }
+| ID LPAREN formal_list RPAREN EQUAL stmt_list DSEMI  { Asn($1, FuncDef($3, $6)) }
+/*| ID LPAREN expr RPAREN EQUAL expr DSEMI { Debug($1) }*/
 
 /*formal_opt:
                 { [] }
