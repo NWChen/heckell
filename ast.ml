@@ -1,6 +1,8 @@
 type op = 
   Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
+type uop = Neg
+
 type prim_typ = Int | Bool | Real | Char
 
 type typ = 
@@ -14,41 +16,26 @@ type typ =
 
 (* type bind = string * typ *)
 
+
 type expr =
-    Binop of expr * op * expr
+    Id of string
+  | Binop of expr * op * expr
+  | Uniop of uop * expr
   | Lit of int
   | RealLit of string
   | BoolLit of bool
-  | Id of string
-  | FuncDef of expr list * stmt list (* param ids * function body *)
+  | SetLit of expr list
+  | SetBuilder of stmt * expr
+  | FuncDef of string list * stmt list (* param ids * function body *)
+  | FuncCall of string * expr list
   (* | Seq of expr * expr  *)
 
 and stmt =
     Asn of string * expr
   | Decl of string * typ
   | Expr of expr
-
-(* type func_def = {
-  formals : expr list; (* id list *)
-  body : stmt list; (* stmt list whose last stmt is expr that returns output typ *)
-} *)
-
-  (* | Return of expr *)
-  (* | If of expr * stmt * stmt *)
-  (* | For of expr * expr * expr * stmt *)
-  (* | While of expr * stmt *)
-
-(* Function stuff *)
-
-(* type func_decl = {
-  fname : string;
-  typ : typ; (* int * int - > int *)
-}
- *)
-
-(* Program *)
+  | Iter of string * expr
 
 type program = stmt list
-
 (* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)

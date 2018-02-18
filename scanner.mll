@@ -24,12 +24,16 @@ rule tokenize = parse
 | '<'       { LT }
 | "<="      { LEQ }
 | ">"       { GT }
-| ">="      { GEQ } (* Types *)
+| ">="      { GEQ }
+| '|'       { PIPE } (* Types *)
 | "int"     { INT }
 | "real"    { REAL }
 | "bool"    { BOOL }
+| "char"    { CHAR }
 | "set"     { SET }
 | "let"     { LET }
+| "in"      { IN }
+| ','       { COMMA }
 | ':'       { COLON }
 | ';'       { SEMI }
 | ";;"      { DSEMI }
