@@ -7,6 +7,12 @@ let string_of_op = function
   | Sub -> "-"
   | Mul -> "*"
   | Div -> "/"
+  | Equal -> "=="
+  | Neq -> "!="
+  | Less -> "<"
+  | Leq -> "<="
+  | Greater -> ">"
+  | Geq -> ">="
 
 let string_of_prim_typ = function
     Int -> "int"

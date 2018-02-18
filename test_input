@@ -5,3 +5,9 @@ let x: real;
 x = 3.0;
 let y: bool;
 y = true;
+
+let a: bool;
+a = foo > x;
+
+let b: bool;
+b = 3 == 2;
