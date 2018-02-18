@@ -1,0 +1,12 @@
+let S : int set;
+S = {1, 2, 3, 4};
+let T : int set;
+T = {x in S | x -2  > 0};
+
+let P : int set set;
+P = {{1,2}, {2,3}, {5,4}};
+let Q : int set set;
+Q = {s in P | s < S};
+
+let R : real set;
+R = {x in {2.1, 0.3, 4.5} | x == 2.1};
