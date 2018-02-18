@@ -28,6 +28,7 @@
 %left ARROW
 %left PLUS MINUS
 %left TIMES DIVIDE
+%nonassoc NEG
 %left LPAREN LBRACKET
 
 
@@ -59,6 +60,7 @@ expr:
 | expr MINUS  expr      { Binop($1, Sub, $3) }
 | expr TIMES  expr      { Binop($1, Mul, $3) }
 | expr DIVIDE expr      { Binop($1, Div, $3) }
+| MINUS expr %prec NEG  { Uniop(Neg, $2) }
 | expr EQ     expr      { Binop($1, Equal, $3) }
 | expr NEQ    expr      { Binop($1, Neq,   $3) }
 | expr LT     expr      { Binop($1, Less,  $3) }
@@ -75,7 +77,7 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI  /* function assign definition */
+| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
                            { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
 | expr SEMI                { Expr($1) }
 
@@ -90,9 +92,17 @@ expr_list:
 | expr                 { [$1] }
 | expr_list COMMA expr { $3 :: $1 }
 
+/* 
+  This is tricky, all our stmts end with semicolon, however 
+  the last stmt in this list should end without it as the
+  next token in the func def is a double semi. expr on the
+  other hand don't need to end in anything, so we can use
+  them to specify the end of the list of stmts. Luckily this
+  is the exact behavior we wanted for functions, as the last
+  stmt has to be a expr which returns a value.
+*/
 func_stmt_list:
-| stmt                      { [$1] }
-| func_stmt_list SEMI stmt  { $3 :: $1 }
+| stmt_list expr  { Expr($2) :: $1 }
 
 
 /*formal_opt:

@@ -1,6 +1,8 @@
 type op = 
   Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
+type uop = Neg
+
 type prim_typ = Int | Bool | Real | Char
 
 type typ = 
@@ -18,6 +20,7 @@ type typ =
 type expr =
     Id of string
   | Binop of expr * op * expr
+  | Uniop of uop * expr
   | Lit of int
   | RealLit of string
   | BoolLit of bool

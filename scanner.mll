@@ -29,6 +29,7 @@ rule tokenize = parse
 | "int"     { INT }
 | "real"    { REAL }
 | "bool"    { BOOL }
+| "char"    { CHAR }
 | "set"     { SET }
 | "let"     { LET }
 | "in"      { IN }

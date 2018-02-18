@@ -1,1 +1,8 @@
 let S : int set;
+S = {2, 3*x, 5+4};
+
+let T : real set set set;
+T = {2.0};
+
+let E : char set;
+E = {};
