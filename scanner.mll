@@ -32,6 +32,7 @@ rule tokenize = parse
 | "set"     { SET }
 | "let"     { LET }
 | "in"      { IN }
+| ','       { COMMA }
 | ':'       { COLON }
 | ';'       { SEMI }
 | ";;"      { DSEMI }
