@@ -9,13 +9,8 @@ type prim_typ = Int | Bool | Real | Char
 type typ = 
   | Set of typ 
   (* | Tuple of typ list  *)
-  (* | Unit of prim_typ *)
   | Func of typ * typ (* typ1: args, typ2: output *)
   | PrimTyp of prim_typ
-
-(* type typ = prim_typ | der_typ *)
-
-(* type bind = string * typ *)
 
 
 type expr =

@@ -10,7 +10,6 @@
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR
 %token SET 
-%token PLS
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE
 %token <int> LITERAL
