@@ -13,6 +13,8 @@ let string_of_op = function
   | Leq -> "<="
   | Greater -> ">"
   | Geq -> ">="
+  | And -> "and"
+  | Or -> "or"
 
 let string_of_uop = function
     Neg -> "-"
@@ -38,13 +40,21 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Uniop(o, e) -> string_of_uop o ^ string_of_expr e
   | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
+  | SetBuilder(s, e) -> "{" ^ string_of_stmt s ^ " | " ^ string_of_expr e ^ "}"
+  | SetBuilderExt(e1, s, el) -> 
+      let stmt_str = string_of_stmt s in
+      let expr_str_list = List.map string_of_expr el in
+      let cond_str = String.concat ", " (stmt_str :: expr_str_list) in
+      "{" ^ string_of_expr e1 ^ " | " ^ cond_str ^ "}"
   | FuncDef(formals, stmts) ->
-      (String.concat "," formals) ^ "\n" ^ (String.concat "\n" (List.map string_of_stmt stmts))
+      "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
+      ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
 
 and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
   | Expr(e) -> string_of_expr e
+  | Iter(s, e) -> s ^ " in " ^ string_of_expr e
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
