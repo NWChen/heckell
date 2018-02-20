@@ -48,7 +48,7 @@ let rec string_of_expr = function
       let cond_str = String.concat ", " (stmt_str :: expr_str_list) in
       "{" ^ string_of_expr e1 ^ " | " ^ cond_str ^ "}"
   | FuncDef(formals, stmts) ->
-      "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
+      "(" ^ (String.concat "," (List.map string_of_expr formals)) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
 
 and string_of_stmt = function
