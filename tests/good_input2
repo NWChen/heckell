@@ -1,2 +1,0 @@
-let f: int->real;
-f(x) = x / 2.5 ;;
