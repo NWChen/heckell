@@ -7,6 +7,7 @@
 %token LBRACE RBRACE
 
 %token LET IN COLON COMMA SEMI DSEMI ARROW
+%token FORALL EXISTS
 %token EQ NEQ LT LEQ GT GEQ
 %token INT BOOL REAL CHAR
 %token SET 
@@ -67,6 +68,10 @@ expr:
 | expr LEQ    expr      { Binop($1, Leq,   $3) }
 | expr GT     expr      { Binop($1, Greater, $3) }
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
+| FORALL ID IN expr PIPE expr
+    { FuncCall("EVAL_ALL_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ALL_TRUE` */
+| EXISTS ID IN expr PIPE expr
+    { FuncCall("EVAL_ANY_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ANY_TRUE` */
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
