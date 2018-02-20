@@ -29,7 +29,7 @@ type expr =
   | SetBuilder of stmt * expr
   (* debating between expr opt and expr list for last param *)
   | SetBuilderExt of expr * stmt * expr list
-  | FuncDef of string list * stmt list (* param ids * function body *)
+  | FuncDef of expr list * stmt list (* param ids * function body *)
   | FuncCall of string * expr list
   (* | Seq of expr * expr  *)
 
