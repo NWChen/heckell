@@ -34,7 +34,6 @@ rule tokenize = parse
 | "char"    { CHAR }
 | "set"     { SET }
 | "let"     { LET }
-| "def"		{ DEF }
 | "in"      { IN }
 | ','       { COMMA }
 | ':'       { COLON }
