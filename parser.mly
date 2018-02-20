@@ -6,7 +6,7 @@
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 
-%token LET IN COLON COMMA SEMI DSEMI ARROW
+%token LET IN COLON COMMA SEMI DSEMI ARROW DEF
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR
 %token SET 
@@ -92,8 +92,8 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
-                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
+| DEF ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
+                           { Asn($2, FuncDef(List.rev $4, List.rev $7)) }
 
 stmt_list:
   /* nothing */  { [] }
