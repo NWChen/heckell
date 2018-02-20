@@ -25,7 +25,9 @@
 /*%left LET*/
 %left COMMA
 %right EQUAL
+
 %left ARROW
+%left SET
 %left OR
 %left AND
 %left EQ NEQ
@@ -91,16 +93,17 @@ stmt:
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
                            { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
-| expr SEMI                { Expr($1) }
 
 
 stmt_list:
   /* nothing */  { [] }
 | stmt_list stmt { $2 :: $1 }
 
+/*
 stmt_list_ne:
 | stmt           { [$1] }
 | stmt_list stmt { $2 :: $1 }
+*/
 
 expr_list:
   /* nothing */        { [] }
