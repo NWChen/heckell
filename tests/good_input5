@@ -1,0 +1,2 @@
+let max: int set -> int;
+max(S) = { e in S | forall x in S | e >= x };;
