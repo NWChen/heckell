@@ -74,15 +74,12 @@ expr:
 | expr LEQ    expr      { Binop($1, Leq,   $3) }
 | expr GT     expr      { Binop($1, Greater, $3) }
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
-<<<<<<< HEAD
 | FORALL ID IN expr PIPE expr
     { FuncCall("EVAL_ALL_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ALL_TRUE` */
 | EXISTS ID IN expr PIPE expr
     { FuncCall("EVAL_ANY_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ANY_TRUE` */
-=======
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
->>>>>>> f140f6d1ddc7486a7891a2075d8f5acb36672bd7
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   

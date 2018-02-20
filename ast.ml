@@ -1,6 +1,5 @@
 type op = 
-  Add | Sub | Mul | Div | Equal | Neq 
-| Less | Leq | Greater | Geq | And | Or
+  Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type uop = Neg
 
@@ -27,8 +26,6 @@ type expr =
   | BoolLit of bool
   | SetLit of expr list
   | SetBuilder of stmt * expr
-  (* debating between expr opt and expr list for last param *)
-  | SetBuilderExt of expr * stmt * expr list
   | FuncDef of string list * stmt list (* param ids * function body *)
   | FuncCall of string * expr list
   (* | Seq of expr * expr  *)
