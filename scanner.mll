@@ -38,6 +38,8 @@ rule tokenize = parse
 | ';'       { SEMI }
 | ";;"      { DSEMI }
 | '='       { EQUAL }
+| "forall"  { FORALL }
+| "exists"  { EXISTS }
 | digit+ as lit   { LITERAL(int_of_string lit) }
 | digit+ '.' digit+ as reallit { REALLIT(reallit) }
 | "true"    { BOOLLIT(true) }
