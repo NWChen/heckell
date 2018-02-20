@@ -38,6 +38,7 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Uniop(o, e) -> string_of_uop o ^ string_of_expr e
   | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
+  | FuncCall(s, el) -> s ^ "(" ^ (String.concat ", " (List.map string_of_expr el)) ^ ")"
   | FuncDef(formals, stmts) ->
       (String.concat "," formals) ^ "\n" ^ (String.concat "\n" (List.map string_of_stmt stmts))
 

@@ -1,0 +1,6 @@
+let f: int->int;
+f = 6;
+f(x) = y + x;;
+f(6, 4);
+let x: int;
+f(5, x);

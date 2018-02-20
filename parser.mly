@@ -21,7 +21,7 @@
 /* TODO: Precedence and associativity */
 /* %nonassoc COLON */
 %right SEMI
-/*%right DSEMI*/
+%right DSEMI
 /*%left LET*/
 %left COMMA
 %right EQUAL
@@ -51,6 +51,20 @@ typ:
 /* Tuple type */
 
 
+stmt:
+| expr SEMI                { Expr($1) }
+| ID EQUAL expr SEMI       { Asn($1, $3) }
+| LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
+| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
+                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
+| expr SEMI                { Expr($1) }
+
+
+stmt_list:
+  /* nothing */  { [] }
+| stmt_list stmt { $2 :: $1 }
+
+
 expr:
   ID                    { Id($1) }
 | LITERAL               { Lit($1) }
@@ -67,24 +81,12 @@ expr:
 | expr LEQ    expr      { Binop($1, Leq,   $3) }
 | expr GT     expr      { Binop($1, Greater, $3) }
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
+/*| ID LPAREN expr_list RPAREN { FuncCall($1, $3) }*/
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
     { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }
 
-
-stmt:
-| expr SEMI                { Expr($1) }
-| ID EQUAL expr SEMI       { Asn($1, $3) }
-| LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
-                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
-| expr SEMI                { Expr($1) }
-
-
-stmt_list:
-  /* nothing */  { [] }
-| stmt_list stmt { $2 :: $1 }
 
 
 expr_list:
