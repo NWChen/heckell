@@ -25,6 +25,8 @@ rule tokenize = parse
 | "<="      { LEQ }
 | ">"       { GT }
 | ">="      { GEQ }
+| "and"     { AND }
+| "or"      { OR }
 | '|'       { PIPE } (* Types *)
 | "int"     { INT }
 | "real"    { REAL }

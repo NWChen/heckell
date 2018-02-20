@@ -1,1 +1,2 @@
 let f: int->real;
+f(3) = x / 2.5;;

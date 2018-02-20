@@ -4,6 +4,8 @@ TARFILES = Makefile scanner.mll parser.mly ast.ml heckell.ml
 OBJS = parser.cmo scanner.cmo ast.cmo pprinting.cmo heckell.cmo
 #codegen.cmo
 
+YOPTS =
+
 heckell : $(OBJS)
 	ocamlc -o heckell $(OBJS)
 
@@ -14,8 +16,8 @@ scanner.ml : scanner.mll
 	ocamllex scanner.mll
 
 parser.ml parser.mli : parser.mly
-	ocamlyacc parser.mly
-
+	ocamlyacc $(YOPTS)  parser.mly
+	
 %.cmo : %.ml
 	ocamlc -c $<
 

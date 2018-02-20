@@ -8,7 +8,7 @@
 
 %token LET IN COLON COMMA SEMI DSEMI ARROW
 %token FORALL EXISTS
-%token EQ NEQ LT LEQ GT GEQ
+%token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR
 %token SET 
 
@@ -26,10 +26,16 @@
 /*%left LET*/
 %left COMMA
 %right EQUAL
+
 %left ARROW
+%left SET
+%left OR
+%left AND
+%left EQ NEQ
+%left LT GT LEQ GEQ
 %left PLUS MINUS
 %left TIMES DIVIDE
-%nonassoc NEG
+%right NEG
 %left LPAREN LBRACKET
 
 
@@ -39,7 +45,7 @@
 %%
 
 program:
-  stmt_list EOF { $1 }
+  stmt_list EOF { List.rev $1 }
 
 /* note this type is typ, NOT prim_typ */
 typ: 
@@ -68,14 +74,25 @@ expr:
 | expr LEQ    expr      { Binop($1, Leq,   $3) }
 | expr GT     expr      { Binop($1, Greater, $3) }
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
+<<<<<<< HEAD
 | FORALL ID IN expr PIPE expr
     { FuncCall("EVAL_ALL_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ALL_TRUE` */
 | EXISTS ID IN expr PIPE expr
     { FuncCall("EVAL_ANY_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ANY_TRUE` */
+=======
+| expr AND    expr      { Binop($1, And, $3) }
+| expr OR     expr      { Binop($1, Or, $3) }
+>>>>>>> f140f6d1ddc7486a7891a2075d8f5acb36672bd7
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
     { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }
+| LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
+    { SetBuilderExt(
+        FuncDef([$4], [Expr($2)]), 
+        Iter($4, $6),
+        List.rev $7
+    )}
 
 
 stmt:
@@ -84,16 +101,24 @@ stmt:
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
                            { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
-| expr SEMI                { Expr($1) }
 
 
 stmt_list:
   /* nothing */  { [] }
 | stmt_list stmt { $2 :: $1 }
 
+/*
+stmt_list_ne:
+| stmt           { [$1] }
+| stmt_list stmt { $2 :: $1 }
+*/
 
 expr_list:
   /* nothing */        { [] }
+| expr                 { [$1] }
+| expr_list COMMA expr { $3 :: $1 }
+
+expr_list_ne:
 | expr                 { [$1] }
 | expr_list COMMA expr { $3 :: $1 }
 
@@ -108,6 +133,10 @@ expr_list:
 */
 func_stmt_list:
 | stmt_list expr  { Expr($2) :: $1 }
+
+set_build_ext_cond:
+  /* nothing */       { [] }
+| COMMA expr_list_ne  { $2 }
 
 
 /*formal_opt:
