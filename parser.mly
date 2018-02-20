@@ -38,7 +38,7 @@
 %%
 
 program:
-  stmt_list EOF { $1 }
+  stmt_list EOF { List.rev $1 }
 
 /* note this type is typ, NOT prim_typ */
 typ: 
