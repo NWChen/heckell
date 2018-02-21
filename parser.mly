@@ -22,7 +22,7 @@
 /* TODO: Precedence and associativity */
 /* %nonassoc COLON */
 %right SEMI
-/*%right DSEMI*/
+%right DSEMI
 /*%left LET*/
 %left COMMA
 %right EQUAL
@@ -74,19 +74,18 @@ expr:
 | expr LEQ    expr      { Binop($1, Leq,   $3) }
 | expr GT     expr      { Binop($1, Greater, $3) }
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
-| FORALL ID IN expr PIPE expr
-    { FuncCall("EVAL_ALL_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ALL_TRUE` */
-| EXISTS ID IN expr PIPE expr
-    { FuncCall("EVAL_ANY_TRUE", [$4; $6]) } /* TODO: construct the builtin function `EVAL_ANY_TRUE` */
+| FORALL ID IN expr PIPE expr { SetBuilder(Iter($2, $4), FuncDef([], [Expr($6)])) } /* An anonymous function */
+| EXISTS ID IN expr PIPE expr { SetBuilder(Iter($2, $4), FuncDef([], [Expr($6)])) }
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
+| ID LPAREN expr_list_ne RPAREN { FuncCall($1, $3) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
-    { SetBuilder(Iter($2, $4), FuncDef([$2], [Expr($6)])) }
+    { SetBuilder(Iter($2, $4), FuncDef([Id($2)], [Expr($6)])) }
 | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
     { SetBuilderExt(
-        FuncDef([$4], [Expr($2)]), 
+        FuncDef([Id($4)], [Expr($2)]), 
         Iter($4, $6),
         List.rev $7
     )}
@@ -96,9 +95,8 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN formal_list RPAREN EQUAL func_stmt_list DSEMI
+| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI
                            { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
-
 
 stmt_list:
   /* nothing */  { [] }
@@ -139,7 +137,8 @@ set_build_ext_cond:
 /*formal_opt:
                 { [] }
 | formal_list   { List.rev $1 }*/
-
+/*
 formal_list:
 | ID                    { [$1] }
 | formal_list COMMA ID  { $3 :: $1 }
+*/

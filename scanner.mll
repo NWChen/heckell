@@ -3,9 +3,7 @@
 let letter = ['a'-'z' 'A'-'Z' '_']
 let digit = ['0'-'9']
 
-(* TODO: add `:` *)
 (* TODO: add `(...)` *)
-(* TODOLATER: add `,` to delimit parameters *)
 
 rule tokenize = parse
   [' ' '\t' '\r' '\n'] { tokenize lexbuf }
