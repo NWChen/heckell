@@ -1,0 +1,7 @@
+let p: (real * real)
+p = (2.1, 3.4)
+let x: (int * real * int * char)
+x = (a)
+let y: (int * (int set) * int)
+y = ()
+let z: (((int * int) set) * int)

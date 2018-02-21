@@ -47,15 +47,33 @@ program:
   stmt_list EOF { List.rev $1 }
 
 /* note this type is typ, NOT prim_typ */
-typ: 
-  INT            { PrimTyp(Int) }
-| BOOL           { PrimTyp(Bool) }
-| REAL           { PrimTyp(Real) }
-| CHAR           { PrimTyp(Char) }
-| typ ARROW typ  { Func($1, $3) }
-| typ SET        { Set($1) }
-/* Tuple type */
 
+/* 
+  type structure is an extremly simplified version
+  of ocaml's type parsing rules (from source code),
+  with a few modifications to match our semantics
+  (mostly the function type) 
+ */
+simple_typ:
+  INT                 { PrimTyp(Int) }
+| BOOL                { PrimTyp(Bool) }
+| REAL                { PrimTyp(Real) }
+| CHAR                { PrimTyp(Char) }
+| simple_typ SET             { Set($1) }
+| LPAREN typ RPAREN   { $2 }
+
+simple_typ_or_tuple:
+| simple_typ          { $1 }
+| simple_typ TIMES typ_list   { Tuple($1 :: (List.rev $3)) }
+
+typ: 
+| simple_typ_or_tuple { $1 }
+| typ ARROW typ       { Func($1, $3) }
+
+
+typ_list:
+| simple_typ           { [$1] }
+| typ_list TIMES simple_typ   { $3 :: $1 }
 
 expr:
   ID                    { Id($1) }
@@ -76,6 +94,7 @@ expr:
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
 | ID LPAREN expr_list_ne RPAREN { FuncCall($1, $3) }
+| LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
@@ -84,7 +103,7 @@ expr:
     { SetBuilderExt(
         FuncDef([Id($4)], [Expr($2)]), 
         Iter($4, $6),
-        List.rev $7
+        List.map (fun e -> FuncDef([Id($4)], [Expr(e)])) (List.rev $7)
     )}
 
 

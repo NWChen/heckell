@@ -6,9 +6,10 @@ type uop = Neg
 
 type prim_typ = Int | Bool | Real | Char
 
+(* Maybe we should fuse prim_typ into typ *)
 type typ = 
   | Set of typ 
-  (* | Tuple of typ list  *)
+  | Tuple of typ list 
   | Func of typ * typ (* typ1: args, typ2: output *)
   | PrimTyp of prim_typ
 
@@ -20,6 +21,7 @@ type expr =
   | Lit of int
   | RealLit of string
   | BoolLit of bool
+  | TupleLit of expr list
   | SetLit of expr list
   | SetBuilder of stmt * expr
   (* debating between expr opt and expr list for last param *)
@@ -35,5 +37,4 @@ and stmt =
   | Iter of string * expr
 
 type program = stmt list
-(* TODO: op for `->` (TYPE) *)
 (* TODO: op for `(...)` (PARAMS) *)
