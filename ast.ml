@@ -1,5 +1,6 @@
 type op = 
-  Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
+  Add | Sub | Mul | Div | Equal | Neq
+| Less | Leq | Greater | Geq | And | Or
 
 type uop = Neg
 
