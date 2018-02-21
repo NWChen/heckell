@@ -21,6 +21,7 @@ type expr =
   | Lit of int
   | RealLit of string
   | BoolLit of bool
+  | TupleLit of expr list
   | SetLit of expr list
   | SetBuilder of stmt * expr
   (* debating between expr opt and expr list for last param *)

@@ -94,6 +94,7 @@ expr:
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
 | ID LPAREN expr_list_ne RPAREN { FuncCall($1, $3) }
+| LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
