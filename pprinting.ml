@@ -27,7 +27,8 @@ let string_of_prim_typ = function
 
 let rec string_of_typ = function
     Set(t) -> "(" ^ string_of_typ t ^ " set)"
-  | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ ") -> (" ^ string_of_typ t2 ^ ")" ^ ";"
+  | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
+  | Tuple(tl) -> "(" ^ (String.concat " * " (List.map string_of_typ tl)) ^ ")" 
   | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
