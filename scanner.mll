@@ -6,7 +6,7 @@ let digit = ['0'-'9']
 (* TODO: add `(...)` *)
 
 rule tokenize = parse
-  [' ' '\t' '\r' '\n'] { tokenize lexbuf }
+| [' ' '\t' '\r' '\n']  { tokenize lexbuf }
 | '('       { LPAREN }
 | ')'       { RPAREN }
 | '{'       { LBRACE }
@@ -25,7 +25,7 @@ rule tokenize = parse
 | ">="      { GEQ }
 | "and"     { AND }
 | "or"      { OR }
-| '|'       { PIPE } (* Types *)
+| '|'       { PIPE }
 | "int"     { INT }
 | "real"    { REAL }
 | "bool"    { BOOL }
@@ -38,10 +38,16 @@ rule tokenize = parse
 | ';'       { SEMI }
 | ";;"      { DSEMI }
 | '='       { EQUAL }
-| digit+ as lit   { LITERAL(int_of_string lit) }
-| digit+ '.' digit+ as reallit { REALLIT(reallit) }
+| digit+ as lit                 { LITERAL(int_of_string lit) }
+| digit+ '.' digit+ as reallit  { REALLIT(reallit) }
 | "true"    { BOOLLIT(true) }
 | "false"   { BOOLLIT(false) }
+| "'" ([^ '\'' '\\'] as c) "'"  { CHARLIT(c) }
+| "'\\n'"   { CHARLIT('\n') }
+| "'\\t'"   { CHARLIT('\t') }
+| "'\\''"   { CHARLIT('\'') }
+| "'\\\"'"  { CHARLIT('"') }
+| "\\\\"    { CHARLIT('\\') }
 | letter (letter | digit)* as lit { ID(lit) }
 | eof { EOF }
 | "->"      { ARROW }

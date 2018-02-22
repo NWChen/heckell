@@ -55,15 +55,15 @@ program:
   (mostly the function type) 
  */
 simple_typ:
-  INT                 { PrimTyp(Int) }
-| BOOL                { PrimTyp(Bool) }
-| REAL                { PrimTyp(Real) }
-| CHAR                { PrimTyp(Char) }
-| simple_typ SET             { Set($1) }
-| LPAREN typ RPAREN   { $2 }
+  INT                         { PrimTyp(Int) }
+| BOOL                        { PrimTyp(Bool) }
+| REAL                        { PrimTyp(Real) }
+| CHAR                        { PrimTyp(Char) }
+| simple_typ SET              { Set($1) }
+| LPAREN typ RPAREN           { $2 }
 
 simple_typ_or_tuple:
-| simple_typ          { $1 }
+| simple_typ                  { $1 }
 | simple_typ TIMES typ_list   { Tuple($1 :: (List.rev $3)) }
 
 typ: 
