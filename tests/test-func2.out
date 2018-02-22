@@ -1,0 +1,8 @@
+let f: (int -> int)
+f = (x,y) ->
+  (
+    y + x
+  )
+f(4, 6)
+let x: int
+f(x, 5)
