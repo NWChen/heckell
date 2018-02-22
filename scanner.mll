@@ -3,8 +3,6 @@
 let letter = ['a'-'z' 'A'-'Z' '_']
 let digit = ['0'-'9']
 
-(* TODO: add `(...)` *)
-
 rule tokenize = parse
   [' ' '\t' '\r' '\n'] { tokenize lexbuf }
 | '('       { LPAREN }

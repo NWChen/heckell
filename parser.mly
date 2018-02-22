@@ -1,7 +1,5 @@
 %{ open Ast %}
 
-/* TODO: add ->, :, (...), */
-
 %token LBRACKET RBRACKET 
 %token LPAREN RPAREN
 %token LBRACE RBRACE
@@ -18,11 +16,8 @@
 %token <string> ID
 %token EOF
 
-/* TODO: Precedence and associativity */
-/* %nonassoc COLON */
 %right SEMI
 %right DSEMI
-/*%left LET*/
 %left COMMA
 %right EQUAL
 
@@ -148,13 +143,3 @@ func_stmt_list:
 set_build_ext_cond:
   /* nothing */       { [] }
 | COMMA expr_list_ne  { $2 }
-
-
-/*formal_opt:
-                { [] }
-| formal_list   { List.rev $1 }*/
-/*
-formal_list:
-| ID                    { [$1] }
-| formal_list COMMA ID  { $3 :: $1 }
-*/
