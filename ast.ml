@@ -10,9 +10,9 @@ type prim_typ = Int | Bool | Real | Char
 type typ = 
   | Set of typ 
   | Tuple of typ list 
+  | Array of typ
   | Func of typ * typ (* typ1: args, typ2: output *)
   | PrimTyp of prim_typ
-
 
 type expr =
     Id of string
@@ -23,6 +23,8 @@ type expr =
   | BoolLit of bool
   | TupleLit of expr list
   | SetLit of expr list
+  | ArrayLit of expr list
+  | ArrayRange of expr * expr option * expr
   | SetBuilder of stmt * expr
   (* debating between expr opt and expr list for last param *)
   | SetBuilderExt of expr * stmt * expr list

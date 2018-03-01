@@ -10,8 +10,9 @@
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR
 %token SET 
+%token ARRAY
 
-%token PLUS MINUS TIMES DIVIDE EQUAL PIPE
+%token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
 %token <int> LITERAL
 %token <string> REALLIT
 %token <bool> BOOLLIT
@@ -59,7 +60,8 @@ simple_typ:
 | BOOL                { PrimTyp(Bool) }
 | REAL                { PrimTyp(Real) }
 | CHAR                { PrimTyp(Char) }
-| simple_typ SET             { Set($1) }
+| simple_typ SET      { Set($1) }
+| simple_typ ARRAY    { Array($1) }
 | LPAREN typ RPAREN   { $2 }
 
 simple_typ_or_tuple:
@@ -96,6 +98,12 @@ expr:
 | ID LPAREN expr_list_ne RPAREN { FuncCall($1, $3) }
 | LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
+| LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
+| LBRACKET expr_list_ne ELLIPSE expr RBRACKET { match List.rev $2 with
+                                                [e1] -> ArrayRange(e1, None, $4)
+                                                | [e1; e2] -> ArrayRange(e1, Some e2, $4)
+                                                | _ -> raise (Failure("Too many arguments for ArrayRange"))
+                                              }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
     { SetBuilder(Iter($2, $4), FuncDef([Id($2)], [Expr($6)])) }
