@@ -1,7 +1,7 @@
-TARFILES = Makefile scanner.mll parser.mly ast.ml heckell.ml
+TARFILES = Makefile scanner.mll parser.mly sast.ml ast.ml heckell.ml
 # codegen.ml
 
-OBJS = parser.cmo scanner.cmo ast.cmo pprinting.cmo heckell.cmo
+OBJS = parser.cmo scanner.cmo sast.cmo ast.cmo pprinting.cmo heckell.cmo
 #codegen.cmo
 
 YOPTS =

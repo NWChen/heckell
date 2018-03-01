@@ -1,8 +1,6 @@
 open Ast
 
-
-type sexpr = typ * sx = (* sx is the same as `expr_detail` from lecture notes *)
-
+type sexpr = typ * sx (* sx is the same as `expr_detail` from lecture notes *)
 
 and sx =
     SId of string
