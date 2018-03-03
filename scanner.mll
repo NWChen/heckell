@@ -2,13 +2,16 @@
   open Parser
   type str_typ = Static | BegInter | MidInter | EndInter
   (* forgive me *)
-  let paren_count = ref 0
-  let in_iexpr = ref false
+  let paren_count = ref 0 (* allows for nested parens *)
+  let inter_depth = ref 0 (* allows for nested strings *)
   (* 
     another solution would be creating a new rule
     of interpolated expressions but that would 
     require copying the tokenize rule and update
     the new rule whenever tokenize is updated
+
+    Additional regex added to scanner can be
+    done as usual
   *)
 }
 
@@ -21,14 +24,14 @@ rule tokenize = parse
 | "/*"                  { comment lexbuf }
 | "//" [^'\n']* '\n'    { tokenize lexbuf }
 | '('       { 
-  if !in_iexpr then 
+  if !inter_depth > 0 then 
     paren_count := !paren_count + 1;
   LPAREN 
 }
 | ')'       { 
-  if !in_iexpr then
+  if !inter_depth > 0 then
     if !paren_count = 0 then (
-      in_iexpr := false;
+      inter_depth := !inter_depth - 1;
       let (styp, s) = str "" MidInter lexbuf in
       match styp with
       | MidInter -> MIDINTERSTRING(s)
@@ -60,7 +63,8 @@ rule tokenize = parse
 | "bool"    { BOOL }
 | "char"    { CHAR }
 | "set"     { SET }
-| "array"   { ARRAY } 
+| "array"   { ARRAY }
+| "string"  { STRING }
 | "let"     { LET }
 | "in"      { IN }
 | "..."     { ELLIPSE } 
@@ -105,7 +109,7 @@ and str old_str typ = parse
 | "\\\"" { str (old_str ^ "\"") typ lexbuf }
 | "\\'" { str (old_str ^ "\'") typ lexbuf }
 | "\\(" {
-  in_iexpr := true;
+  inter_depth := !inter_depth + 1;
   match typ with
   | Static -> (BegInter, old_str)
   | MidInter -> (MidInter, old_str)
@@ -121,7 +125,6 @@ and str old_str typ = parse
 | "\\\\" { str (old_str ^ "\\" ) typ lexbuf }
 | "\\\n" { str (old_str ^ "\n") typ lexbuf }
 | '"' { 
-  in_iexpr := false;
   match typ with
   | Static -> (Static, old_str)
   | MidInter -> (EndInter, old_str)

@@ -11,6 +11,7 @@ type typ =
   | Set of typ 
   | Tuple of typ list 
   | Array of typ
+  | String
   | Func of typ * typ (* typ1: args, typ2: output *)
   | PrimTyp of prim_typ
 

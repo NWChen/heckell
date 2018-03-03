@@ -8,7 +8,7 @@
 
 %token LET IN COLON COMMA SEMI DSEMI ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
-%token INT BOOL REAL CHAR
+%token INT BOOL REAL CHAR STRING
 %token SET 
 %token ARRAY
 
@@ -18,9 +18,7 @@
 %token <char> CHARLIT
 %token <bool> BOOLLIT
 %token <string> STRINGLIT
-/* 
-  types of interpolated strings 
-*/
+/* types of interpolated strings */
 %token <string> BEGINTERSTRING 
 %token <string> MIDINTERSTRING 
 %token <string> ENDINTERSTRING 
@@ -69,6 +67,7 @@ simple_typ:
 | BOOL                { PrimTyp(Bool) }
 | REAL                { PrimTyp(Real) }
 | CHAR                { PrimTyp(Char) }
+| STRING              { String }
 | simple_typ SET      { Set($1) }
 | simple_typ ARRAY    { Array($1) }
 | LPAREN typ RPAREN   { $2 }
