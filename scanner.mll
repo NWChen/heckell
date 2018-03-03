@@ -33,8 +33,10 @@ rule tokenize = parse
 | "bool"    { BOOL }
 | "char"    { CHAR }
 | "set"     { SET }
+| "array"   { ARRAY } 
 | "let"     { LET }
 | "in"      { IN }
+| "..."     { ELLIPSE } 
 | ','       { COMMA }
 | ':'       { COLON }
 | ';'       { SEMI }

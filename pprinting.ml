@@ -29,6 +29,7 @@ let rec string_of_typ = function
     Set(t) -> "(" ^ string_of_typ t ^ " set)"
   | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
   | Tuple(tl) -> "(" ^ (String.concat " * " (List.map string_of_typ tl)) ^ ")" 
+  | Array(t) -> "(" ^ string_of_typ t ^ " array)"
   | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
@@ -44,6 +45,10 @@ let rec string_of_expr = function
   | Uniop(o, e) -> string_of_uop o ^ string_of_expr e
   | FuncCall(s, el) -> s ^ "(" ^ (String.concat ", " (List.map string_of_expr el)) ^ ")"
   | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
+  | ArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_expr el)) ^ "]"
+  | ArrayRange(e1, e2, e3) -> (match e2 with 
+                              | None -> "[" ^ string_of_expr e1 ^ " ... " ^ string_of_expr e3 ^ "]"
+                              | Some x -> "[" ^ string_of_expr e1 ^ ", " ^ string_of_expr x ^ " ... " ^ string_of_expr e3 ^ "]")
   | TupleLit(el) -> "(" ^ (String.concat ", " (List.map string_of_expr el)) ^ ")"
   | SetBuilder(s, e) -> "{" ^ string_of_stmt s ^ " | " ^ string_of_expr e ^ "}"
   | SetBuilderExt(e1, s, el) -> 
