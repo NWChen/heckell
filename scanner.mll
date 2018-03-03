@@ -7,6 +7,8 @@ let digit = ['0'-'9']
 
 rule tokenize = parse
 | [' ' '\t' '\r' '\n']  { tokenize lexbuf }
+| "/*"                  { comment lexbuf }
+| "//" [^'\n']* '\n'    { tokenize lexbuf }
 | '('       { LPAREN }
 | ')'       { RPAREN }
 | '{'       { LBRACE }
@@ -48,6 +50,41 @@ rule tokenize = parse
 | "'\\''"   { CHARLIT('\'') }
 | "'\\\"'"  { CHARLIT('"') }
 | "\\\\"    { CHARLIT('\\') }
+| "'\\" (digit+ as d) "'" {
+  let value = int_of_string d in
+  if value > 255 then
+    raise (Failure "character escape must be 0-255")
+  else
+    CHARLIT(Char.chr value)
+}
 | letter (letter | digit)* as lit { ID(lit) }
+| '"' { STRINGLIT(str "" lexbuf) }
 | eof { EOF }
-| "->"      { ARROW }
+| "\x2D\x3E"  { ARROW } (* arrow op *)
+
+
+and str old_str = parse
+  [^ '\n' '"' '\\']+ as c { str (old_str ^ c) lexbuf }
+| "\\n" { str (old_str ^ "\n") lexbuf }
+| "\\t" { str (old_str ^ "\t") lexbuf }
+| "\\\"" { str (old_str ^ "\"") lexbuf }
+| "\\'" { str (old_str ^ "\'") lexbuf }
+| "\\" (digit+ as d) {
+  let value = int_of_string d in
+  if value > 255 then
+    raise (Failure "character escape must be 0-255")
+  else
+    str (old_str ^ String.make 1 (Char.chr value)) lexbuf
+}
+| "\\\\" { str (old_str ^ "\\" ) lexbuf }
+| "\\\n" { str (old_str ^ "\n") lexbuf }
+| '"' { old_str }
+| _ as char { raise (Failure("illegal character " ^ Char.escaped char ^
+  " in string literal")) }
+
+
+and comment = parse
+  "*/" { tokenize lexbuf }
+| _    { comment lexbuf }
+
+

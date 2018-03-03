@@ -14,7 +14,9 @@
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE
 %token <int> LITERAL
 %token <string> REALLIT
+%token <char> CHARLIT
 %token <bool> BOOLLIT
+%token <string> STRINGLIT
 %token <string> ID
 %token EOF
 
@@ -80,6 +82,8 @@ expr:
 | LITERAL               { Lit($1) }
 | REALLIT               { RealLit($1) }
 | BOOLLIT               { BoolLit($1) }
+| CHARLIT               { CharLit($1) }
+| STRINGLIT             { StringLit($1) }
 | expr PLUS   expr      { Binop($1, Add, $3) }
 | expr MINUS  expr      { Binop($1, Sub, $3) }
 | expr TIMES  expr      { Binop($1, Mul, $3) }

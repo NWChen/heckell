@@ -22,6 +22,7 @@ type expr =
   | RealLit of string
   | BoolLit of bool
   | CharLit of char
+  | StringLit of string
   | TupleLit of expr list
   | SetLit of expr list
   | SetBuilder of stmt * expr
