@@ -18,6 +18,12 @@
 %token <char> CHARLIT
 %token <bool> BOOLLIT
 %token <string> STRINGLIT
+/* 
+  types of interpolated strings 
+*/
+%token <string> BEGINTERSTRING 
+%token <string> MIDINTERSTRING 
+%token <string> ENDINTERSTRING 
 %token <string> ID
 %token EOF
 
@@ -31,6 +37,7 @@
 
 %left ARROW
 %left SET
+%left BEGINTERSTRING
 %left OR
 %left AND
 %left EQ NEQ
@@ -86,7 +93,7 @@ expr:
 | REALLIT               { RealLit($1) }
 | BOOLLIT               { BoolLit($1) }
 | CHARLIT               { CharLit($1) }
-| STRINGLIT             { StringLit($1) }
+| string_lit            { $1 }
 | expr PLUS   expr      { Binop($1, Add, $3) }
 | expr MINUS  expr      { Binop($1, Sub, $3) }
 | expr TIMES  expr      { Binop($1, Mul, $3) }
@@ -104,11 +111,12 @@ expr:
 | LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
-| LBRACKET expr_list_ne ELLIPSE expr RBRACKET { match List.rev $2 with
-                                                [e1] -> ArrayRange(e1, None, $4)
-                                                | [e1; e2] -> ArrayRange(e1, Some e2, $4)
-                                                | _ -> raise (Failure("Too many arguments for ArrayRange"))
-                                              }
+| LBRACKET expr_list_ne ELLIPSE expr RBRACKET 
+    { match List.rev $2 with
+        [e1] -> ArrayRange(e1, None, $4)
+      | [e1; e2] -> ArrayRange(e1, Some e2, $4)
+      | _ -> raise (Failure("Too many arguments for ArrayRange"))
+    }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr RBRACE   
     { SetBuilder(Iter($2, $4), FuncDef([Id($2)], [Expr($6)])) }
@@ -136,6 +144,20 @@ stmt_list_ne:
 | stmt           { [$1] }
 | stmt_list stmt { $2 :: $1 }
 */
+
+string_lit:
+| STRINGLIT            { StringLit($1) }
+| BEGINTERSTRING mid_inter_string  ENDINTERSTRING      
+    { InterStringLit(
+        $1::( List.rev ($3::(fst $2)) ), 
+        List.rev (snd $2) ) 
+    }
+
+mid_inter_string:
+| expr    { ([], [$1]) }
+| mid_inter_string MIDINTERSTRING expr   
+    { ($2::(fst $1), $3::(snd $1)) }
+
 
 expr_list:
   /* nothing */        { [] }

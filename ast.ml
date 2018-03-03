@@ -23,6 +23,7 @@ type expr =
   | BoolLit of bool
   | CharLit of char
   | StringLit of string
+  | InterStringLit of string list * expr list
   | TupleLit of expr list
   | SetLit of expr list
   | ArrayLit of expr list
