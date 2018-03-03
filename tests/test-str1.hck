@@ -1,0 +1,8 @@
+let s : string;
+s = "hello world!";
+
+"hello world\nThis is a new line";
+
+"\"special\" \t 'test\'";
+
+"\72\101\108\108\111";
