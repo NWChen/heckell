@@ -43,28 +43,24 @@ let check stmts =
         | Id s       -> (type_of_identifier s symbols, SId s)
 
     in
-    let check_asn checked asn = 
+    let check_asn asn = 
         (* ... *)
 
     
-    let check_expr checked expr = 
+    let check_expr expr = 
         (* ... *)
     in
     let check_stmt stmt symbols =
-        let invalid_err = "invalid statement" 
-        in match stmt with
-        Expr e -> (SExpr (expr e), symbols)
-        | Asn(var, e) as ex ->
-            let lt = type_of_identifier var 
-            and (rt, e') = expr e in
-            let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^ string_of_typ rt ^ " in " ^ string_of_expr ex in
-            check_assign lt rt err, SAsn(var, (rt, e'))
-        | Decl(var, t) -> 
-            StringMap.add var t symbols (* TODO: check mutating symbols map *)
-            in (SDecl(var, t), symbols)
         (* ... *)
     (* check stmts *)
-    in let symbols = Map.fold_left (fun retval -> check_stmt snd retval) [] stmts 
+    in 
+    let symbols = Map.fold_left (fun retval -> check_stmt snd retval) [] stmts 
     (* gather sstmt list *)
-    in List.fold_left gather_stmt stmts
+    in 
+    let append_sstmt bla = function
+        Expr e -> SExpr (expr e)
+        | Asn(var, e) as ex -> SAsn(var, (StringMap.find var symbols, expr e)
+        | Decl(t, var) -> SDecl(t, var)
+    in 
+    List.fold_left append_sstmt [] stmts 
 
