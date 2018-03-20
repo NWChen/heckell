@@ -55,9 +55,15 @@ let check stmts =
     (* check stmts *)
     in 
     let symbols = Map.fold_left (fun retval -> check_stmt snd retval) [] stmts 
+
+    (****************************************************)
+    let symbols = List.fold_left (fun symbols stmt -> StringMap.add (check_stmt stmt) stmt symbols) StringMap.empty stmts
+
+    
+
     (* gather sstmt list *)
     in 
-    let append_sstmt bla = function
+    let append_sstmt = function
         Expr e -> SExpr (expr e)
         | Asn(var, e) as ex -> SAsn(var, (StringMap.find var symbols, expr e)
         | Decl(t, var) -> SDecl(t, var)
