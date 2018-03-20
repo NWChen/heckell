@@ -4,22 +4,22 @@ type sexpr = typ * sx (* sx is the same as `expr_detail` from lecture notes *)
 
 and sx =
     SId of string
-  | SBinop of expr * op * expr
-  | SUniop of uop * expr
+  | SBinop of sexpr * op * sexpr
+  | SUniop of uop * sexpr
   | SLit of int
   | SRealLit of string
   | SBoolLit of bool
-  | STupleLit of expr list
-  | SSetLit of expr list
-  | SSetBuilder of stmt * expr
-  | SSetBuilderExt of expr * stmt * expr list
-  | SFuncDef of expr list * stmt list (* param ids * function body *)
-  | SFuncCall of string * expr list
+  | STupleLit of sexpr list
+  | SSetLit of sexpr list
+  | SSetBuilder of stmt * sexpr
+  | SSetBuilderExt of sexpr * stmt * sexpr list
+  | SFuncDef of sexpr list * stmt list (* param ids * function body *)
+  | SFuncCall of string * sexpr list
 
 and sstmt =
-    SAsn of string * expr
+    SAsn of string * sexpr
   | SDecl of string * typ
-  | SExpr of expr
-  | SIter of string * expr
+  | SExpr of sexpr
+  | SIter of string * sexpr
 
 type sprogram = sstmt list
