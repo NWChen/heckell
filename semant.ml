@@ -56,15 +56,8 @@ let check stmts =
             in let _ = check_asn left_t right_t err 
             in symbols
         | Expr e -> symbols (* TODO review this *)
-        
-        (* ... *)
-    (* check stmts *)
-    (* in 
-    let symbols = Map.fold_left (fun retval -> check_stmt snd retval) [] stmts *)
-
-    (****************************************************)
-    let symbols = List.fold_left (fun symbols stmt -> StringMap.add (check_stmt stmt) stmt symbols) StringMap.empty stmts (* TODO verify `List.fold_left` being used correctly here *)
-
+    in    
+    let symbols = List.fold_left (fun map stmt -> StringMap.add (check_stmt stmt) stmt map) StringMap.empty stmts (* TODO verify `List.fold_left` being used correctly here. map = temp symbols *)
 
     (* gather sstmt list *)
     in 
