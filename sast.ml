@@ -18,7 +18,7 @@ and sx =
 
 and sstmt =
     SAsn of string * sexpr
-  | SDecl of typ * string
+  | SDecl of string * typ
   | SExpr of sexpr
   | SIter of string * sexpr
 
