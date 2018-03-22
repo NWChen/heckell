@@ -1,13 +1,18 @@
-TARFILES = Makefile scanner.mll parser.mly sast.ml ast.ml heckell.ml
+TARFILES = Makefile scanner.mll parser.mly sast.ml ast.ml semant.ml heckell.ml
 # codegen.ml
 
-OBJS = parser.cmo scanner.cmo sast.cmo ast.cmo pprinting.cmo heckell.cmo
+OBJS = parser.cmo scanner.cmo sast.cmo codegen.cmo ast.cmo semant.cmo pprinting.cmo heckell.cmo
 #codegen.cmo
 
 YOPTS =
 
 heckell : $(OBJS)
-	ocamlc -o heckell $(OBJS)
+	ocamlc -linkpkg -package llvm -package llvm.analysis -o heckell $(OBJS)
+
+
+
+		# ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis $(OBJS) -o microc
+
 
 # codegen : $(OBJS)
 # 	ocamlc -o codegen $(OBJS)
@@ -35,12 +40,16 @@ clean :
 # codegen.cmo: scanner.cmo parser.cmi ast.cmo 
 # codegen.cmx: scanner.cmx parser.cmx ast.cmo 
 
-heckell.cmo: scanner.cmo parser.cmi ast.cmo pprinting.cmo
-heckell.cmx: scanner.cmx parser.cmx ast.cmo pprinting.cmo
+codegen.cmo : ast.cmo
+codegen.cmx : ast.cmx
+heckell.cmo: semant.cmo scanner.cmo parser.cmi ast.cmo codegen.cmo pprinting.cmo
+heckell.cmx: semant.cmx scanner.cmx parser.cmx ast.cmo codegen.cmx pprinting.cmo
 parser.cmo: ast.cmo parser.cmi 
 parser.cmx: ast.cmo parser.cmi 
 scanner.cmo: parser.cmi 
 scanner.cmx: parser.cmx 
+semant.cmo : ast.cmo
+semant.cmx : ast.cmx
 parser.cmi: ast.cmo 
 
 
