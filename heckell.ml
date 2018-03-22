@@ -1,11 +1,12 @@
 open Pprinting
-(* 
+
 let () = 
   let lexbuf = Lexing.from_channel stdin in
   let ast = Parser.program Scanner.tokenize lexbuf in
+  let sast = Semant.check ast in
   print_string (Pprinting.string_of_program ast)
 
- *)
+(* 
  type action = Ast | Sast | LLVM_IR | Compile
 
  let () =
@@ -33,4 +34,4 @@ let () =
     | LLVM_IR -> print_string (Llvm.string_of_llmodule (Codegen.translate sast))
     | Compile -> let m = Codegen.translate sast in
 	Llvm_analysis.assert_valid_module m;
-	print_string (Llvm.string_of_llmodule m)
+	print_string (Llvm.string_of_llmodule m) *)
