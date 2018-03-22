@@ -35,12 +35,14 @@ clean :
 # codegen.cmo: scanner.cmo parser.cmi ast.cmo 
 # codegen.cmx: scanner.cmx parser.cmx ast.cmo 
 
-heckell.cmo: scanner.cmo parser.cmi ast.cmo pprinting.cmo
-heckell.cmx: scanner.cmx parser.cmx ast.cmo pprinting.cmo
+heckell.cmo: semant.cmo scanner.cmo parser.cmi ast.cmo pprinting.cmo
+heckell.cmx: semant.cmx scanner.cmx parser.cmx ast.cmo pprinting.cmo
 parser.cmo: ast.cmo parser.cmi 
 parser.cmx: ast.cmo parser.cmi 
 scanner.cmo: parser.cmi 
 scanner.cmx: parser.cmx 
+semant.cmo : ast.cmo
+semant.cmx : ast.cmx
 parser.cmi: ast.cmo 
 
 
