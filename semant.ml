@@ -50,14 +50,15 @@ let check stmts =
       match to_check with
       [] -> symbols
       | stmt :: tail -> match stmt with
-        Decl (var, t) -> StringMap.add var t symbols
-        | Asn (var, e) as ex ->
+        Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
+        | Asn (var, e) ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
           let err = "illegal assignment " (* TODO rest of error message *)
-          in let _ = check_asn left_t right_t err in symbols
-        | Expr e -> symbols; (* TODO review this *) 
-        check_stmt tail symbols
+          in let _ = check_asn left_t right_t err 
+          in check_stmt tail symbols
+        | Expr e -> check_stmt tail symbols
+        
     in
     let symbols = check_stmt stmts StringMap.empty
 
