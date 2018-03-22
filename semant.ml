@@ -57,7 +57,15 @@ let check stmts =
             | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
             | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
             in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
+        | Uniop (op, e) ->
+            let (t, e') = expr e map in
+            let ty = match op with
+              Neg when t = PrimTyp(Int) || t = PrimTyp(Real) || t = PrimTyp(Bool) -> t
+            | _ -> raise (Failure ("illegal unary operator"))
+            in (ty, SUniop(op, (t, e')))
         | Lit l -> (PrimTyp(Int), SLit l)
+        | RealLit s -> (PrimTyp(Real), SRealLit s)
+        | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
     in
     let check_asn left_t right_t err =
         if left_t = right_t then left_t else raise (Failure err)
