@@ -46,25 +46,20 @@ let check stmts =
     let check_asn left_t right_t err =
         if left_t = right_t then left_t else raise (Failure err)
     in 
-    let check_stmt stmt symbols = 
-        match stmt with
-        Decl (var, t) -> StringMap.add var t (* add var:t *)
+    let rec check_stmt to_check symbols = 
+      match to_check with
+      [] -> symbols
+      | stmt :: tail -> match stmt with
+        Decl (var, t) -> StringMap.add var t symbols
         | Asn (var, e) as ex ->
-            let left_t = type_of_identifier var symbols
-            and (right_t, e') = expr e in
-            let err = "illegal assignment " in (* TODO rest of error message *)
-            in let _ = check_asn left_t right_t err 
-            in symbols
-        | Expr e -> symbols (* TODO review this *)
-        
-        (* ... *)
-    (* check stmts *)
-    (* in 
-    let symbols = Map.fold_left (fun retval -> check_stmt snd retval) [] stmts *)
-
-    (****************************************************)
-    let symbols = List.fold_left (fun symbols stmt -> StringMap.add (check_stmt stmt) stmt symbols) StringMap.empty stmts (* TODO verify `List.fold_left` being used correctly here *)
-
+          let left_t = type_of_identifier var symbols
+          and (right_t, e') = expr e in
+          let err = "illegal assignment " in (* TODO rest of error message *)
+          in let _ = check_asn left_t right_t err in symbols
+        | Expr e -> symbols; (* TODO review this *) 
+        check_stmt tail symbols
+    in
+    let symbols = check_stmt stmts StringMap.empty
 
     (* gather sstmt list *)
     in 
