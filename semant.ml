@@ -41,6 +41,22 @@ let check stmts =
     (* TODO: correct expr *)
     let rec expr e map = match e with
         Id s       -> (type_of_identifier s map, SId s)
+        (* implement auto-boxing conditions *)
+        | Binop (e1, op, e2) ->
+            let (t1, e1') = expr e1 map
+            and (t2, e2') = expr e2 map in
+            (* All binary operators require operands of the same type *)
+            let same = t1 = t2 in
+            (* Determine expression type based on operator and operand types *)
+            let ty = match op with
+              Add | Sub | Mul | Div when same && t1 = PrimTyp(Int)  -> PrimTyp(Int)
+            | Add | Sub | Mul | Div when same && t1 = PrimTyp(Real) -> PrimTyp(Real)
+            | Equal | Neq            when same              -> PrimTyp(Bool)
+            | Less | Leq | Greater | Geq
+                       when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
+            | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
+            | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
+            in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
         | Lit l -> (PrimTyp(Int), SLit l)
     in
     let check_asn left_t right_t err =
@@ -72,4 +88,3 @@ let check stmts =
       | Decl(t, var) -> SDecl(t, var)
     in 
     List.map append_sstmt stmts
-
