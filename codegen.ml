@@ -30,6 +30,5 @@ let translate (statements) =
           L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
 
   in
-
-List.iter build_statements statements;
-the_module
+  List.iter build_statements statements in
+  the_module

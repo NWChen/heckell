@@ -7,7 +7,12 @@ OBJS = parser.cmo scanner.cmo sast.cmo codegen.cmo ast.cmo semant.cmo pprinting.
 YOPTS =
 
 heckell : $(OBJS)
-	ocamlc -o heckell $(OBJS)
+	ocamlc -linkpkg -package llvm -package llvm.analysis -o heckell $(OBJS)
+
+
+
+		# ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis $(OBJS) -o microc
+
 
 # codegen : $(OBJS)
 # 	ocamlc -o codegen $(OBJS)
