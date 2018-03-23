@@ -27,3 +27,6 @@ setup.log
 
 # llvm
 llvm/
+
+# .DS_Store
+.DS_Store
