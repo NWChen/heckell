@@ -3,7 +3,7 @@ module A = Ast
 open Sast 
 
 
-let translate (statements) =
+(* let translate (statements) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type    context
@@ -31,4 +31,4 @@ let translate (statements) =
 
   in
   List.iter build_statements statements in
-  the_module
+  the_module *)

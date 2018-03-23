@@ -69,7 +69,7 @@ let check stmts =
       Expr e -> SExpr (expr e symbols)
       | Asn(var, e) -> 
           SAsn(var, expr e symbols)
-      | Decl(t, var) -> SDecl(t, var)
+      | Decl(var, t) -> SDecl(var, t)
     in 
     List.map append_sstmt stmts
 
