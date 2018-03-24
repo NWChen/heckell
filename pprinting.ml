@@ -50,14 +50,16 @@ let rec string_of_expr = function
       | None -> "[" ^ string_of_expr e1 ^ " ... " ^ string_of_expr e3 ^ "]"
       | Some x -> "[" ^ string_of_expr e1 
                   ^ ", " ^ string_of_expr x ^ " ... " 
-                  ^ string_of_expr e3 ^ "]")
+                  ^ string_of_expr e3 ^ "]"
+    )
   | TupleLit(el) -> "(" ^ (String.concat ", " (List.map string_of_expr el)) ^ ")"
-  | SetBuilder(s, e) -> "{" ^ string_of_stmt s ^ " | " ^ string_of_expr e ^ "}"
-  | SetBuilderExt(e1, s, el) -> 
-      let stmt_str = string_of_stmt s in
-      let expr_str_list = List.map string_of_expr el in
-      let cond_str = String.concat ", " (stmt_str :: expr_str_list) in
-      "{" ^ string_of_expr e1 ^ " | " ^ cond_str ^ "}"
+  | SetBuilder(opt, s, e2) -> 
+    (match opt with
+      | None -> "{" ^ string_of_stmt s ^ " | " ^ string_of_expr e2 ^ "}"
+      | Some e1 -> "{" ^ string_of_expr e1 
+                  ^ " | " ^ string_of_stmt s 
+                  ^ ", " ^ string_of_expr e2 ^ "}"
+    )
   | FuncDef(formals, stmts) ->
       "(" ^ (String.concat "," (List.map string_of_expr formals)) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
@@ -95,12 +97,13 @@ let rec string_of_sexpr (t, e) =
                   ^ string_of_sexpr x ^ " ... " 
                   ^ string_of_sexpr e3 ^ "]")
   | STupleLit(el) -> "(" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ ")"
-  | SSetBuilder(s, e) -> "{" ^ string_of_sstmt s ^ " | " ^ string_of_sexpr e ^ "}"
-  | SSetBuilderExt(e1, s, el) -> 
-      let stmt_str = string_of_sstmt s in
-      let expr_str_list = List.map string_of_sexpr el in
-      let cond_str = String.concat ", " (stmt_str :: expr_str_list) in
-      "{" ^ string_of_sexpr e1 ^ " | " ^ cond_str ^ "}"
+  | SSetBuilder(opt, s, e2) -> 
+    (match opt with
+      | None -> "{" ^ string_of_sstmt s ^ " | " ^ string_of_sexpr e2 ^ "}"
+      | Some e1 -> "{" ^ string_of_sexpr e1 
+                  ^ " | " ^ string_of_sstmt s 
+                  ^ ", " ^ string_of_sexpr e2 ^ "}"
+    )
   | SFuncDef(formals, stmts) ->
       "(" ^ (String.concat "," (List.map string_of_sexpr formals)) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_sstmt stmts)) ^ "\n  )"

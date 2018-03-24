@@ -30,46 +30,63 @@ module StringMap = Map.Make(String)
  * Then we can continue with evaluating the types of stmt-Exprs, etc.
  *)
 
+
+(* 
+ * Should check
+ * 1) types match
+ * 2) Variables are declared before usage
+ * 3) Variables are in scope
+ *)
+
 (* stmts: stmt list *)
 let check stmts = 
 
-    let type_of_identifier var map =
-      try StringMap.find var map
-      with Not_found -> raise (Failure ("undeclared identifier " ^ var))
-    in
-    (* Return a semantically-checked expression, i.e., with a type *)
-    (* TODO: correct expr *)
-    let rec expr e map = match e with
-        Id s       -> (type_of_identifier s map, SId s)
-        | Lit l -> (PrimTyp(Int), SLit l)
-    in
-    let check_asn left_t right_t err =
-        if left_t = right_t then left_t else raise (Failure err)
-    in 
-    let rec check_stmt to_check symbols = 
-      match to_check with
-      [] -> symbols
-      | stmt :: tail -> match stmt with
-        Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
-        | Asn (var, e) ->
+  let type_of_identifier var map =
+    try StringMap.find var map
+    with Not_found -> raise (Failure ("undeclared identifier " ^ var))
+  in
+  (* Return a semantically-checked expression, i.e., with a type *)
+  (* TODO: correct expr *)
+  let rec expr e map = match e with
+    | Id s  -> (type_of_identifier s map, SId s)
+    | Lit l -> (PrimTyp(Int), SLit l)
+(*     | RealLit
+    | BoolLit
+    | TupleLit
+    | SetLit
+    | ArrayLit
+    | Binop
+    | Uniop
+    | ArrayRange
+    | SetBuilder
+    |  *)
+  in
+  let check_asn left_t right_t err =
+    if left_t = right_t then left_t else raise (Failure err)
+  in 
+  let rec check_stmt to_check symbols = 
+    match to_check with
+    | [] -> symbols
+    | stmt :: tail -> match stmt with
+      Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
+      | Asn (var, e) ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
           let err = "illegal assignment " (* TODO rest of error message *)
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
-        | Expr e -> check_stmt tail symbols
-        
-    in
-    let symbols = check_stmt stmts StringMap.empty
+      | Expr e -> check_stmt tail symbols  
+  in
+  let symbols = check_stmt stmts StringMap.empty
 
-    (* gather sstmt list *)
-    in 
-    let append_sstmt stmt =
-      match stmt with
-      Expr e -> SExpr (expr e symbols)
-      | Asn(var, e) -> 
-          SAsn(var, expr e symbols)
-      | Decl(var, t) -> SDecl(var, t)
-    in 
-    List.map append_sstmt stmts
+  (* gather sstmt list *)
+  in 
+  let append_sstmt stmt =
+    match stmt with
+    Expr e -> SExpr (expr e symbols)
+    | Asn(var, e) -> 
+        SAsn(var, expr e symbols)
+    | Decl(var, t) -> SDecl(var, t)
+  in 
+  List.map append_sstmt stmts
 

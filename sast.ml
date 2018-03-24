@@ -11,10 +11,9 @@ and sx =
   | SBoolLit of bool
   | STupleLit of sexpr list
   | SSetLit of sexpr list
-  | SSetBuilder of sstmt * sexpr
+  | SSetBuilder of sexpr option * sstmt * sexpr
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
-  | SSetBuilderExt of sexpr * sstmt * sexpr list
   | SFuncDef of sexpr list * sstmt list (* param ids * function body *)
   | SFuncCall of string * sexpr list
 
