@@ -130,7 +130,7 @@ let check stmts =
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
   in 
-  let symbols_init = StringMap.add "printf" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
+  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
   in 
   let symbols = check_stmt stmts symbols_init
   (* gather sstmt list *)

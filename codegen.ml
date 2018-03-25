@@ -60,7 +60,7 @@ let translate (statement_list) =
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SFuncCall ("print", [e]) -> (* Generate a call instruction *)
         L.build_call printf_func [| int_format_str ; (expr builder e) |]
-        "printf" builder 
+        "printf" builder; L.build_ret (expr builder e) builder 
       (* Throw an error for any other expressions *)
       | _ -> to_imp ""  
     in ()
