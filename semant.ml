@@ -41,54 +41,84 @@ module StringMap = Map.Make(String)
 
 (* stmts: stmt list *)
 let check stmts = 
-    let type_of_identifier var map =
-      try StringMap.find var map
-      with Not_found -> raise (Failure ("undeclared identifier " ^ var))
-    in
-    (* Return a semantically-checked expression, i.e., with a type *)
-    (* TODO: correct expr *)
-    let rec expr e map = 
-      match e with
-        | Id s  -> (type_of_identifier s map, SId s)
-        (* implement auto-boxing conditions *)
-        | Binop (e1, op, e2) ->
-            let (t1, e1') = expr e1 map
-            and (t2, e2') = expr e2 map in
-            (* All binary operators require operands of the same type *)
-            let same = t1 = t2 in
-            (* Determine expression type based on operator and operand types *)
-            let ty = match op with
-              Add | Sub | Mul | Div when same && t1 = PrimTyp(Int)  -> PrimTyp(Int)
-            | Add | Sub | Mul | Div when same && t1 = PrimTyp(Real) -> PrimTyp(Real)
-            | Equal | Neq            when same              -> PrimTyp(Bool)
-            | Less | Leq | Greater | Geq
-                       when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
-            | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
-            | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
-            in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
-        | Uniop (op, e) ->
-            let (t, e') = expr e map in
-            let ty = match op with
-              Neg when t = PrimTyp(Int) || t = PrimTyp(Real) || t = PrimTyp(Bool) -> t
-            | _ -> raise (Failure ("illegal unary operator"))
-            in (ty, SUniop(op, (t, e')))
-        | Lit l -> (PrimTyp(Int), SLit l)
-        | RealLit s -> (PrimTyp(Real), SRealLit s)
-        | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
-    in
-    let check_asn left_t right_t err =
-        if left_t = right_t then left_t else raise (Failure err)
-    in 
-    let rec check_stmt to_check symbols = 
-      match to_check with
-      | [] -> symbols
-      | stmt :: tail -> match stmt with
-        | Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
-        | Asn(var, e) as ex ->
+  let type_of_identifier var map =
+    try StringMap.find var map
+    with Not_found -> raise (Failure ("undeclared identifier " ^ var))
+  in
+  (* Return a semantically-checked expression, i.e., with a type *)
+  (* TODO: correct expr *)
+  let rec expr e map = match e with
+    | Id s  -> (type_of_identifier s map, SId s)
+    | Binop (e1, op, e2) ->
+      let (t1, e1') = expr e1 map
+      and (t2, e2') = expr e2 map in
+      (* All binary operators require operands of the same type *)
+      let same = t1 = t2 in
+      (* Determine expression type based on operator and operand types *)
+      let ty = match op with
+        Add | Sub | Mul | Div when same && t1 = PrimTyp(Int)  -> PrimTyp(Int)
+      | Add | Sub | Mul | Div when same && t1 = PrimTyp(Real) -> PrimTyp(Real)
+      | Equal | Neq            when same              -> PrimTyp(Bool)
+      | Less | Leq | Greater | Geq
+                 when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
+      | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
+      | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
+      in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
+    | Uniop (op, e) ->
+      let (t, e') = expr e map in
+      let ty = match op with
+        Neg when t = PrimTyp(Int) || t = PrimTyp(Real) || t = PrimTyp(Bool) -> t
+      | _ -> raise (Failure ("illegal unary operator"))
+      in (ty, SUniop(op, (t, e')))
+    | Lit l -> (PrimTyp(Int), SLit l)
+    | RealLit s -> (PrimTyp(Real), SRealLit s)
+    | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
+    | TupleLit t -> 
+      let sexpr_list = List.map (fun ex -> expr ex map) t in
+      ( Tuple (List.map fst sexpr_list), 
+        STupleLit (sexpr_list) )
+    | SetLit l -> 
+      (* let set_t = 
+        match l with
+        | [] -> PrimTyp(Int) this is bad, should look into what type an empty set it
+        | h::t -> fst (expr h)
+      in 
+      let sexpr_list = List.map expr l in *)
+      let set_t = match l with
+        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
+        | h::t -> fst (expr h map)
+      in let sexpr_list = List.map (fun ex -> expr ex map) l
+      in let is_valid = true (* List.fold_left (fun b se -> b and (set_t = fst se)) true sexpr_list *)
+      in (
+        match is_valid with
+        | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
+        | true -> (Set(set_t), SSetLit (sexpr_list))
+      )
+    | ArrayLit l ->
+      let arr_t = match l with
+        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
+        | h::t -> fst (expr h map)
+      in let sexpr_list = List.map (fun ex -> expr ex map) l
+      in let is_valid = true (* List.fold_left (fun b se -> b and (arr_t = fst se)) true sexpr_list *)
+      in (
+        match is_valid with
+        | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
+        | true -> (Set(arr_t), SArrayLit (sexpr_list))
+      )
+  in
+  let check_asn left_t right_t err =
+    if left_t = right_t then left_t else raise (Failure err)
+  in 
+  let rec check_stmt to_check symbols = 
+    match to_check with
+    | [] -> symbols
+    | stmt :: tail -> match stmt with
+      | Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
+      | Asn(var, e) as st ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
           let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
-            string_of_typ right_t ^ " in " ^ string_of_stmt ex
+            string_of_typ right_t ^ " in " ^ string_of_stmt st
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
