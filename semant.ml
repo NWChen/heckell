@@ -48,13 +48,7 @@ let check stmts =
     (* Return a semantically-checked expression, i.e., with a type *)
     (* TODO: correct expr *)
     let rec expr e map = 
-      let check_list_same_typ l =
-        let list_t = match l with
-          | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
-          | h::t -> fst (expr h)
-        in let sexpr_list = List.map expr l
-        in (list_t, List.fold_left (fun b se -> (b and (set_t = fst se))) (true) (sexpr_list))
-      in match e with
+      match e with
         | Id s  -> (type_of_identifier s map, SId s)
         (* implement auto-boxing conditions *)
         | Binop (e1, op, e2) ->
@@ -81,30 +75,6 @@ let check stmts =
         | Lit l -> (PrimTyp(Int), SLit l)
         | RealLit s -> (PrimTyp(Real), SRealLit s)
         | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
-        | TupleLit t -> 
-          let sexpr_list = List.map (expr) t in
-          ( Tuple (List.map fst sexpr_list), 
-            STupleLit (List.map snd sexpr_list) )
-        | SetLit l -> 
-          (* let set_t = 
-            match l with
-            | [] -> PrimTyp(Int) this is bad, should look into what type an empty set it
-            | h::t -> fst (expr h)
-          in 
-          let sexpr_list = List.map expr l in *)
-          let (set_t, valid) = check_list_same_typ l
-          in (
-            match valid with
-            | false -> raise (Failure "all elements of set must have type " ^ (string_of_typ set_t))
-            | true -> (Set(set_t), SSetLit (List.map snd sexpr_list))
-          )
-        | ArrayLit l ->
-          let (arr_t, valid) = check_list_same_typ l
-          in (
-            match valid with
-            | false -> raise (Failure "all elements of array must have type " ^ (string_of_typ set_t))
-            | true -> (Set(arr_t), SArrayLit (List.map snd sexpr_list))
-          )
     in
     let check_asn left_t right_t err =
         if left_t = right_t then left_t else raise (Failure err)
@@ -117,8 +87,8 @@ let check stmts =
         | Asn(var, e) as ex ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
-          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^ 
-            string_of_typ rt ^ " in " ^ string_of_expr ex
+          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+            string_of_typ right_t ^ " in " ^ string_of_stmt ex
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
@@ -128,9 +98,7 @@ let check stmts =
   in 
   let append_sstmt stmt =
     match stmt with
-    Expr e -> SExpr (expr e symbols)
-    | Asn(var, e) -> 
-        SAsn(var, expr e symbols)
+    | Expr e -> SExpr (expr e symbols)
+    | Asn(var, e) -> SAsn(var, expr e symbols)
     | Decl(var, t) -> SDecl(var, t)
-  in 
-  List.map append_sstmt stmts
+  in List.map append_sstmt stmts

@@ -1,17 +1,6 @@
 open Pprinting
 
-<<<<<<< HEAD
-let () = 
-  let lexbuf = Lexing.from_channel stdin in
-  let ast = Parser.program Scanner.tokenize lexbuf in
-  let _ = Semant.check ast in
-  print_string (Pprinting.string_of_program ast)
-
-(* 
- type action = Ast | Sast | LLVM_IR | Compile
-=======
 type action = Ast | Sast | LLVM_IR | Compile
->>>>>>> 3038e3f34d6a8de2781c466b59de3a7f5abe05a7
 
 let () = 
   let action = ref Compile in
