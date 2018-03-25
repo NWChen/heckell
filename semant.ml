@@ -105,6 +105,12 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
+    | FuncCall(var, elist) -> 
+      let sexpr_list = List.map (fun ex -> expr ex map) elist 
+      in let typ = type_of_identifier var map 
+      in match typ with
+      | Func(in_typ, out_typ) -> (Func(in_typ, out_typ), SFuncCall(var, sexpr_list))
+      | _ -> raise (Failure ("non-function type stored"))
     | _ -> raise (Failure ("not matched"))
   in
   let check_asn left_t right_t err =
