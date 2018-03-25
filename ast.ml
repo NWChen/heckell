@@ -11,6 +11,7 @@ type typ =
   | Set of typ 
   | Tuple of typ list 
   | Array of typ
+  | String
   | Func of typ * typ (* typ1: args, typ2: output *)
   | PrimTyp of prim_typ
 
@@ -21,6 +22,9 @@ type expr =
   | Lit of int
   | RealLit of string
   | BoolLit of bool
+  | CharLit of char
+  | StringLit of string
+  | InterStringLit of string list * expr list
   | TupleLit of expr list
   | SetLit of expr list
   | ArrayLit of expr list

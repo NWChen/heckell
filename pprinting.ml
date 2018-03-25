@@ -30,6 +30,7 @@ let rec string_of_typ = function
   | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
   | Tuple(tl) -> "(" ^ (String.concat " * " (List.map string_of_typ tl)) ^ ")" 
   | Array(t) -> "(" ^ string_of_typ t ^ " array)"
+  | String -> "string"
   | PrimTyp(t) -> string_of_prim_typ t
 
 let rec string_of_expr = function
@@ -37,6 +38,16 @@ let rec string_of_expr = function
   | RealLit(l) -> l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | CharLit(c) -> "'" ^ Char.escaped c ^ "'"
+  | StringLit(s) -> "\"" ^ s ^ "\""
+  | InterStringLit(sl, el) -> 
+      let rec interleave_print l1 l2 =
+        match l1, l2 with
+        | [s], _ -> s
+        | h1::t1, h2::t2 -> 
+          h1 ^ "\\( " ^ (string_of_expr h2) ^ " )" ^ interleave_print t1 t2
+        | _ -> raise (Failure "heckin interpolated string")
+      in "\"" ^ interleave_print sl el ^ "\""
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
