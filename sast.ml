@@ -9,6 +9,9 @@ and sx =
   | SLit of int
   | SRealLit of string
   | SBoolLit of bool
+  | SCharLit of char
+  | SStringLit of string
+  | SInterStringLit of string list * sexpr list
   | STupleLit of sexpr list
   | SSetLit of sexpr list
   | SSetBuilder of sexpr option * sstmt * sexpr

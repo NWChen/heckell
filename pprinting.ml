@@ -42,13 +42,13 @@ let rec string_of_expr = function
   | CharLit(c) -> "'" ^ Char.escaped c ^ "'"
   | StringLit(s) -> "\"" ^ s ^ "\""
   | InterStringLit(sl, el) -> 
-      let rec interleave_print l1 l2 =
+      let rec interweave_print l1 l2 =
         match l1, l2 with
         | [s], _ -> s
         | h1::t1, h2::t2 -> 
-          h1 ^ "\\( " ^ (string_of_expr h2) ^ " )" ^ interleave_print t1 t2
+          h1 ^ "\\( " ^ (string_of_expr h2) ^ " )" ^ interweave_print t1 t2
         | _ -> raise (Failure "heckin interpolated string")
-      in "\"" ^ interleave_print sl el ^ "\""
+      in "\"" ^ interweave_print sl el ^ "\""
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -94,6 +94,16 @@ let rec string_of_sexpr (t, e) =
   | SRealLit(l) -> l
   | SBoolLit(true) -> "true"
   | SBoolLit(false) -> "false"
+  | SCharLit(c) -> "'" ^ Char.escaped c ^ "'"
+  | SStringLit(s) -> "\"" ^ s ^ "\""
+  | SInterStringLit(sl, sel) -> 
+      let rec interweave_print l1 l2 =
+        match l1, l2 with
+        | [s], _ -> s
+        | h1::t1, h2::t2 -> 
+          h1 ^ "\\( " ^ (string_of_sexpr h2) ^ " )" ^ interweave_print t1 t2
+        | _ -> raise (Failure "heckin interpolated string")
+      in "\"" ^ interweave_print sl sel ^ "\""
   | SId(s) -> s
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
