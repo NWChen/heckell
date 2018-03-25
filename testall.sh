@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HECKELL="./heckell"
+HECKELL="./heckell -a"
 
 # Set time limit for all operations
 ulimit -t 30

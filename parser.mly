@@ -105,14 +105,25 @@ expr:
                                                 | _ -> raise (Failure("Too many arguments for ArrayRange"))
                                               }
 /* TODO: Allow for set of tuples */
-| LBRACE ID IN expr PIPE expr RBRACE   
-    { SetBuilder(Iter($2, $4), FuncDef([Id($2)], [Expr($6)])) }
+| LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
+    { SetBuilder(
+        (* identity function *)
+        None, 
+        Iter($2, $4), 
+        FuncDef([Id($2)], [Expr(
+          List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
+        )])
+      )}
 | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
-    { SetBuilderExt(
-        FuncDef([Id($4)], [Expr($2)]), 
+    { SetBuilder(
+        Some(FuncDef([Id($4)], [Expr($2)])), 
         Iter($4, $6),
-        List.map (fun e -> FuncDef([Id($4)], [Expr(e)])) (List.rev $7)
-    )}
+        FuncDef([Id($4)], [Expr(
+          match (List.rev $7) with
+          | [] -> BoolLit(true)
+          | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
+        )])
+      )}
 
 
 stmt:
