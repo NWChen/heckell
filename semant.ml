@@ -68,7 +68,7 @@ let check stmts =
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
         | h::t -> fst (expr h map)
       in let sexpr_list = List.map (fun ex -> expr ex map) l
-      in let is_valid = true (* List.fold_left (fun b se -> b and (set_t = fst se)) true sexpr_list *)
+      in let is_valid = List.fold_left (fun b se -> b && (set_t = (fst se))) true sexpr_list
       in (
         match is_valid with
         | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
@@ -79,7 +79,7 @@ let check stmts =
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
         | h::t -> fst (expr h map)
       in let sexpr_list = List.map (fun ex -> expr ex map) l
-      in let is_valid = true (* List.fold_left (fun b se -> b and (arr_t = fst se)) true sexpr_list *)
+      in let is_valid = List.fold_left (fun b se -> b && (arr_t = (fst se))) true sexpr_list
       in (
         match is_valid with
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
