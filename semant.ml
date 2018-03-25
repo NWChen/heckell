@@ -105,6 +105,7 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
+    | _ -> raise (Failure ("not matched"))
   in
   let check_asn left_t right_t err =
     if left_t = right_t then left_t else raise (Failure err)
