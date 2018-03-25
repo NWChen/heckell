@@ -6,6 +6,8 @@ open Pprinting
 
 module StringMap = Map.Make(String)
 
+type scope = {symb: Ast.typ StringMap.t; parent: scope option}
+
 (*
  * WHERE WE LEFT OFF
  * -----------------
@@ -41,20 +43,26 @@ module StringMap = Map.Make(String)
 
 (* stmts: stmt list *)
 let check stmts = 
-  let type_of_identifier var map =
-    try StringMap.find var map
-    with Not_found -> raise (Failure ("undeclared identifier " ^ var))
+  let rec type_of_identifier var scope =
+    try StringMap.find var scope.symb
+    with Not_found -> 
+    match scope.parent with
+    | None -> raise (Failure ("undeclared identifier " ^ var))
+    | Some paren_sc -> type_of_identifier var paren_sc
+  in
+  let add_to_scope var typ scope = 
+    {scope with symb = StringMap.add var typ scope.symb} 
   in
   let check_asn left_t right_t err =
     if left_t = right_t then left_t else raise (Failure err)
   in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
-  let rec expr e map = match e with
-    | Id s  -> (type_of_identifier s map, SId s)
+  let rec expr e scope = match e with
+    | Id s  -> (type_of_identifier s scope, SId s)
     | Binop (e1, op, e2) ->
-      let (t1, e1') = expr e1 map
-      and (t2, e2') = expr e2 map in
+      let (t1, e1') = expr e1 scope
+      and (t2, e2') = expr e2 scope in
       (* All binary operators require operands of the same type *)
       let same = t1 = t2 in
       (* Determine expression type based on operator and operand types *)
@@ -68,7 +76,7 @@ let check stmts =
       | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
       in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
     | Uniop (op, e) ->
-      let (t, e') = expr e map in
+      let (t, e') = expr e scope in
       let ty = match op with
         Neg when t = PrimTyp(Int) || t = PrimTyp(Real) || t = PrimTyp(Bool) -> t
       | _ -> raise (Failure ("illegal unary operator"))
@@ -79,16 +87,16 @@ let check stmts =
     | CharLit c -> (PrimTyp(Char), SCharLit c)
     | StringLit s -> (String, SStringLit s)
     | InterStringLit (sl, el) -> 
-      (String, SInterStringLit (sl, List.map (fun ex -> expr ex map) el))
+      (String, SInterStringLit (sl, List.map (fun ex -> expr ex scope) el))
     | TupleLit t -> 
-      let sexpr_list = List.map (fun ex -> expr ex map) t in
+      let sexpr_list = List.map (fun ex -> expr ex scope) t in
       ( Tuple (List.map fst sexpr_list), 
         STupleLit (sexpr_list) )
     | SetLit l -> 
       let set_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
-        | h::t -> fst (expr h map)
-      in let sexpr_list = List.map (fun ex -> expr ex map) l
+        | h::t -> fst (expr h scope)
+      in let sexpr_list = List.map (fun ex -> expr ex scope) l
       in let is_valid = List.fold_left (fun b se -> b && (set_t = (fst se))) true sexpr_list
       in (
         match is_valid with
@@ -98,8 +106,8 @@ let check stmts =
     | ArrayLit l ->
       let arr_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
-        | h::t -> fst (expr h map)
-      in let sexpr_list = List.map (fun ex -> expr ex map) l
+        | h::t -> fst (expr h scope)
+      in let sexpr_list = List.map (fun ex -> expr ex scope) l
       in let is_valid = List.fold_left (fun b se -> b && (arr_t = (fst se))) true sexpr_list
       in (
         match is_valid with
@@ -107,8 +115,8 @@ let check stmts =
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
     | FuncCall(var, e) -> 
-      let typ = type_of_identifier var map 
-      and sexpr = expr e map (* tuple *)
+      let typ = type_of_identifier var scope 
+      and sexpr = expr e scope (* tuple *)
       in match typ with
       | Func(in_typ, out_typ) as ex -> 
         let e_typ = fst sexpr in
@@ -123,7 +131,7 @@ let check stmts =
     match to_check with
     | [] -> symbols
     | stmt :: tail -> match stmt with
-      | Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
+      | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
       | Asn(var, e) as st ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
@@ -133,9 +141,9 @@ let check stmts =
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
   in 
-  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
-  in 
-  let symbols = check_stmt stmts symbols_init
+  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
+  let g_scope = {symb = symbols_init; parent = None} in 
+  let symbols = check_stmt stmts g_scope
   (* gather sstmt list *)
   in 
   let append_sstmt stmt =
