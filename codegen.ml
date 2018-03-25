@@ -56,14 +56,21 @@ let translate (statement_list) =
     (* Create a pointer to a format string for printf *)
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
     (* Generate LLVM code for a call to Heckell's "print" *)
-    let rec expr builder ((_, e) : sexpr) = match e with
+    (*let rec exprb builder ((_, e) : sexpr) = print_endline "exprb"; match e with*)
+    let rec exprb builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SFuncCall ("print", [e]) -> (* Generate a call instruction *)
-        L.build_call printf_func [| int_format_str ; (expr builder e) |]
-        "printf" builder; L.build_ret (expr builder e) builder 
+              L.build_call printf_func [| int_format_str ; (exprb builder e) |]
+        "printf" builder; L.build_ret (exprb builder e) builder 
       (* Throw an error for any other expressions *)
-      | _ -> to_imp ""  
-    in ()
+      | _ -> to_imp ""
+    (*let builder = exprb builder fdecl in*)
+    (*in let _ = exprb builder fdecl in ()*)
+    in match fdecl with
+    | SExpr e -> ignore(exprb builder e)
+    | _ -> ()
+
+    (*in exprb builder fdecl*)
     (* Deal with a block of expression statements, terminated by a return *)
 (*     let rec stmt builder = function
         SBlock sl -> List.fold_left stmt builder sl
@@ -74,4 +81,5 @@ let translate (statement_list) =
     (* in ignore(stmt builder (SBlock fdecl.sbody)) *)
   (* Build each function (there should only be one for Hello World), 
      and return the final module *)
-  in List.iter build_function statement_list; the_module
+  in List.iter build_function statement_list;
+  the_module
