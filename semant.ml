@@ -2,6 +2,7 @@
 
 open Ast
 open Sast
+open Pprinting
 
 module StringMap = Map.Make(String)
 
@@ -47,19 +48,48 @@ let check stmts =
   in
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
-  let rec expr e map = match e with
+  let rec expr e map = 
+    let check_list_same_typ l =
+      let list_t = match l with
+        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
+        | h::t -> fst (expr h)
+      in let sexpr_list = List.map expr l
+      in (list_t, List.fold_left (fun b se -> (b and (set_t = fst se))) (true) (sexpr_list))
+    in match e with
     | Id s  -> (type_of_identifier s map, SId s)
     | Lit l -> (PrimTyp(Int), SLit l)
-(*     | RealLit
-    | BoolLit
-    | TupleLit
-    | SetLit
-    | ArrayLit
-    | Binop
+    | RealLit s -> (PrimTyp(Real), SRealLit s)
+    | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
+    | TupleLit t -> 
+      let sexpr_list = List.map (expr) t in
+      ( Tuple (List.map fst sexpr_list), 
+        STupleLit (List.map snd sexpr_list) )
+    | SetLit l -> 
+      (* let set_t = 
+        match l with
+        | [] -> PrimTyp(Int) this is bad, should look into what type an empty set it
+        | h::t -> fst (expr h)
+      in 
+      let sexpr_list = List.map expr l in *)
+      let (set_t, valid) = check_list_same_typ l
+      in (
+        match valid with
+        | false -> raise (Failure "all elements of set must have type " ^ (string_of_typ set_t))
+        | true -> (Set(set_t), SSetLit (List.map snd sexpr_list))
+      )
+    | ArrayLit l ->
+      let (arr_t, valid) = check_list_same_typ l
+      in (
+        match valid with
+        | false -> raise (Failure "all elements of array must have type " ^ (string_of_typ set_t))
+        | true -> (Set(arr_t), SArrayLit (List.map snd sexpr_list))
+      )
+(*     | Binop
     | Uniop
     | ArrayRange
     | SetBuilder
-    |  *)
+    | FuncDef
+    | FuncCall *)
   in
   let check_asn left_t right_t err =
     if left_t = right_t then left_t else raise (Failure err)
@@ -68,11 +98,12 @@ let check stmts =
     match to_check with
     | [] -> symbols
     | stmt :: tail -> match stmt with
-      Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
-      | Asn (var, e) ->
+      | Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
+      | Asn(var, e) as ex ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
-          let err = "illegal assignment " (* TODO rest of error message *)
+          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^ 
+            string_of_typ rt ^ " in " ^ string_of_expr ex
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
