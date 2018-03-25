@@ -29,9 +29,8 @@ type expr =
   | SetLit of expr list
   | ArrayLit of expr list
   | ArrayRange of expr * expr option * expr
-  | SetBuilder of stmt * expr
-  (* debating between expr opt and expr list for last param *)
-  | SetBuilderExt of expr * stmt * expr list
+  (* Both expr could be optional *)
+  | SetBuilder of expr option * stmt * expr
   | FuncDef of expr list * stmt list (* param ids * function body *)
   | FuncCall of string * expr list
   (* | Seq of expr * expr  *)
