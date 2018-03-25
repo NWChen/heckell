@@ -17,6 +17,7 @@
 
 let letter = ['a'-'z' 'A'-'Z' '_' '\'']
 let digit = ['0'-'9']
+let exp = ['e''E'] ['+' '-']? digit+
 
 
 rule tokenize = parse
@@ -74,7 +75,8 @@ rule tokenize = parse
 | ";;"      { DSEMI }
 | '='       { EQUAL }
 | digit+ as lit                 { LITERAL(int_of_string lit) }
-| digit+ '.' digit+ as reallit  { REALLIT(reallit) }
+| (digit+ exp | (digit+ '.' digit* | '.' digit+) exp?) as reallit  
+  { REALLIT(float_of_string reallit) }
 | "true"    { BOOLLIT(true) }
 | "false"   { BOOLLIT(false) }
 | "'" ([^ '\'' '\\'] as c) "'"  { CHARLIT(c) }

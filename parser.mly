@@ -14,7 +14,7 @@
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
 %token <int> LITERAL
-%token <string> REALLIT
+%token <float> REALLIT
 %token <char> CHARLIT
 %token <bool> BOOLLIT
 %token <string> STRINGLIT

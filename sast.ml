@@ -7,7 +7,7 @@ and sx =
   | SBinop of sexpr * op * sexpr
   | SUniop of uop * sexpr
   | SLit of int
-  | SRealLit of string
+  | SRealLit of float
   | SBoolLit of bool
   | SCharLit of char
   | SStringLit of string

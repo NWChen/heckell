@@ -20,7 +20,7 @@ type expr =
   | Binop of expr * op * expr
   | Uniop of uop * expr
   | Lit of int
-  | RealLit of string
+  | RealLit of float
   | BoolLit of bool
   | CharLit of char
   | StringLit of string

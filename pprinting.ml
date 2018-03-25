@@ -36,7 +36,7 @@ let rec string_of_typ = function
 
 let rec string_of_expr = function
     Lit(l) -> string_of_int l
-  | RealLit(l) -> l
+  | RealLit(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | CharLit(c) -> "'" ^ Char.escaped c ^ "'"
@@ -91,7 +91,7 @@ let string_of_program stmts =
 let rec string_of_sexpr (t, e) = 
   "(" ^ (match e with 
   | SLit(l) -> string_of_int l
-  | SRealLit(l) -> l
+  | SRealLit(l) -> string_of_float l
   | SBoolLit(true) -> "true"
   | SBoolLit(false) -> "false"
   | SCharLit(c) -> "'" ^ Char.escaped c ^ "'"
