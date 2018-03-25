@@ -8,6 +8,10 @@
 *.cmxs
 *.cmxa
 
+scanner.ml
+parser.ml
+heckell
+
 # ocamllex and ocamlyacc targets
 *.mli
 
