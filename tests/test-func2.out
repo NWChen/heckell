@@ -1,8 +1,8 @@
 let f: (int -> int)
 f = (x,y) ->
   (
-    y + x
+    (y + x)
   )
-f(4, 6)
+f (6, 4)
 let x: int
-f(x, 5)
+f (5, x)

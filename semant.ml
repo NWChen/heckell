@@ -114,6 +114,7 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
+    (* | FuncDef(el, sl) ->  *)
     | FuncCall(var, e) -> 
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)

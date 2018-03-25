@@ -73,6 +73,7 @@ rule tokenize = parse
 | ':'       { COLON }
 | ';'       { SEMI }
 | ";;"      { DSEMI }
+| "end"     { END }
 | '='       { EQUAL }
 | digit+ as lit                 { LITERAL(int_of_string lit) }
 | (digit+ exp | (digit+ '.' digit* | '.' digit+) exp?) as reallit  

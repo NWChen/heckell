@@ -1,2 +1,2 @@
 let f: int->int;
-f(y) = y;;
+f(y) = y end

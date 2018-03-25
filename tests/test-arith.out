@@ -3,4 +3,4 @@ a = 5
 let b: int
 b = 5
 let c: int
-c = a + 5
+c = (a + 5)

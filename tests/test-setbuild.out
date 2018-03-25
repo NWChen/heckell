@@ -3,30 +3,30 @@ S = {1, 2, 3, 4}
 let T: (int set)
 T = {x in S | (x) ->
   (
-    x - 2 > 0
+    ((x - 2) > 0)
   )}
 let P: ((int set) set)
 P = {{1, 2}, {2, 3}, {5, 4}}
 let Q: ((int set) set)
 Q = {s in P | (s) ->
   (
-    s < S
+    (s < S)
   )}
 let R: (real set)
 R = {x in {2.1, 0.3, 4.5} | (x) ->
   (
-    x == 2.1
+    (x == 2.1)
   )}
 A = {(x) ->
   (
-    2 * x
+    (2 * x)
   ) | x in R, (x) ->
   (
-    x != 4 and x + 2 and x / 2 == 1
+    (((x != 4) and (x + 2)) and ((x / 2) == 1))
   )}
 B = {(x) ->
   (
-    x + 2
+    (x + 2)
   ) | x in R, (x) ->
   (
     true

@@ -1,5 +1,5 @@
 let f: int->int;
-f(x, y) = y + x;;
+f(x, y) = y + x end
 f(6, 4);
 let x: int;
 f(5, x);

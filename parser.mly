@@ -6,7 +6,7 @@
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 
-%token LET IN COLON COMMA SEMI DSEMI ARROW	
+%token LET IN COLON COMMA SEMI DSEMI END ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR STRING
 %token SET 
@@ -28,7 +28,7 @@
 /* TODO: Precedence and associativity */
 /* %nonassoc COLON */
 %right SEMI
-%right DSEMI
+%right DSEMI END
 /*%left LET*/
 %left COMMA
 %right EQUAL
@@ -122,15 +122,15 @@ expr:
         (* identity function *)
         None, 
         Iter($2, $4), 
-        FuncDef([Id($2)], [Expr(
+        FuncDef([$2], [Expr(
           List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
         )])
       )}
 | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
     { SetBuilder(
-        Some(FuncDef([Id($4)], [Expr($2)])), 
+        Some(FuncDef([$4], [Expr($2)])), 
         Iter($4, $6),
-        FuncDef([Id($4)], [Expr(
+        FuncDef([$4], [Expr(
           match (List.rev $7) with
           | [] -> BoolLit(true)
           | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
@@ -148,8 +148,15 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI
-                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
+| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
+                           { Asn($1, FuncDef(
+                            (let check_id e = 
+                              match e with
+                              | Id(s) -> s
+                              | _ -> raise(Failure("wrong function formals"))
+                            in let formals = List.map check_id $3
+                            in List.rev formals),
+                            List.rev $6)) }
 
 stmt_list:
   /* nothing */  { [] }

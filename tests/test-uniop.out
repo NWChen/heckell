@@ -1,2 +1,2 @@
-let foo: int;
-foo = -4;
+let foo: int
+foo = -4

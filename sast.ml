@@ -17,7 +17,7 @@ and sx =
   | SSetBuilder of sexpr option * sstmt * sexpr
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
-  | SFuncDef of sexpr list * sstmt list (* param ids * function body *)
+  | SFuncDef of string list * sstmt list (* param ids * function body *)
   | SFuncCall of string * sexpr
 
 and sstmt =

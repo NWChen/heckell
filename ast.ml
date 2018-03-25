@@ -31,7 +31,7 @@ type expr =
   | ArrayRange of expr * expr option * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
-  | FuncDef of expr list * stmt list (* param ids * function body *)
+  | FuncDef of string list * stmt list (* param ids * function body *)
   | FuncCall of string * expr
   (* | Seq of expr * expr  *)
 
