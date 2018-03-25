@@ -48,22 +48,15 @@ let check stmts =
   in
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
-  let rec expr e map = 
-    let check_list_same_typ l =
-      let list_t = match l with
-        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
-        | h::t -> fst (expr h)
-      in let sexpr_list = List.map expr l
-      in (list_t, List.fold_left (fun b se -> (b and (set_t = fst se))) (true) (sexpr_list))
-    in match e with
+  let rec expr e map = match e with
     | Id s  -> (type_of_identifier s map, SId s)
     | Lit l -> (PrimTyp(Int), SLit l)
     | RealLit s -> (PrimTyp(Real), SRealLit s)
     | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
     | TupleLit t -> 
-      let sexpr_list = List.map (expr) t in
+      let sexpr_list = List.map (fun ex -> expr ex map) t in
       ( Tuple (List.map fst sexpr_list), 
-        STupleLit (List.map snd sexpr_list) )
+        STupleLit (sexpr_list) )
     | SetLit l -> 
       (* let set_t = 
         match l with
@@ -71,18 +64,26 @@ let check stmts =
         | h::t -> fst (expr h)
       in 
       let sexpr_list = List.map expr l in *)
-      let (set_t, valid) = check_list_same_typ l
+      let set_t = match l with
+        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
+        | h::t -> fst (expr h map)
+      in let sexpr_list = List.map (fun ex -> expr ex map) l
+      in let is_valid = true (* List.fold_left (fun b se -> b and (set_t = fst se)) true sexpr_list *)
       in (
-        match valid with
-        | false -> raise (Failure "all elements of set must have type " ^ (string_of_typ set_t))
-        | true -> (Set(set_t), SSetLit (List.map snd sexpr_list))
+        match is_valid with
+        | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
+        | true -> (Set(set_t), SSetLit (sexpr_list))
       )
     | ArrayLit l ->
-      let (arr_t, valid) = check_list_same_typ l
+      let arr_t = match l with
+        | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
+        | h::t -> fst (expr h map)
+      in let sexpr_list = List.map (fun ex -> expr ex map) l
+      in let is_valid = true (* List.fold_left (fun b se -> b and (arr_t = fst se)) true sexpr_list *)
       in (
-        match valid with
-        | false -> raise (Failure "all elements of array must have type " ^ (string_of_typ set_t))
-        | true -> (Set(arr_t), SArrayLit (List.map snd sexpr_list))
+        match is_valid with
+        | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
+        | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
 (*     | Binop
     | Uniop
@@ -99,11 +100,11 @@ let check stmts =
     | [] -> symbols
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (StringMap.add var t symbols)
-      | Asn(var, e) as ex ->
+      | Asn(var, e) as st ->
           let left_t = type_of_identifier var symbols
           and (right_t, e') = expr e symbols in
-          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^ 
-            string_of_typ rt ^ " in " ^ string_of_expr ex
+          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+            string_of_typ right_t ^ " in " ^ string_of_stmt st
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
