@@ -66,6 +66,10 @@ let check stmts =
         | Lit l -> (PrimTyp(Int), SLit l)
         | RealLit s -> (PrimTyp(Real), SRealLit s)
         | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
+        | TupleLit elist -> 
+            let l = List.map (fun e -> expr e map) elist in (TupleLit(elist), STupleLit(l))
+(*         | SetLit elist -> one by one, check type of element matches set type
+ *)
     in
     let check_asn left_t right_t err =
         if left_t = right_t then left_t else raise (Failure err)
