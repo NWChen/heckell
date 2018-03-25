@@ -13,6 +13,8 @@ all : heckell
 
 OBJS = ast.cmx sast.cmx pprinting.cmx codegen.cmx parser.cmx scanner.cmx semant.cmx heckell.cmx
 
+YOPT =
+
 heckell : $(OBJS)
 	ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis $(OBJS) -o heckell
 	# ocamlfind ocamlopt -linkpkg $(OBJS) -o heckell
@@ -22,7 +24,7 @@ scanner.ml : scanner.mll
 	ocamllex scanner.mll
 
 parser.ml parser.mli : parser.mly
-	ocamlyacc parser.mly
+	ocamlyacc $(YOPT) parser.mly
 
 %.cmo : %.ml
 	ocamlc -c $<

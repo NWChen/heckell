@@ -106,8 +106,8 @@ expr:
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
-| ID LPAREN   expr_list RPAREN { FuncCall($1, TupleLit(List.rev $3)) }
-| LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
+| ID single_or_tuple    { FuncCall($1, $2) }
+| single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
 | LBRACKET expr_list_ne ELLIPSE expr RBRACKET 
@@ -136,6 +136,12 @@ expr:
           | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
         )])
       )}
+
+single_or_tuple:
+| LPAREN expr_list_ne RPAREN  { match $2 with 
+                                | [x] -> x
+                                | l -> TupleLit(List.rev l)
+                              }
 
 
 stmt:

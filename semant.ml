@@ -110,7 +110,11 @@ let check stmts =
       let typ = type_of_identifier var map 
       and sexpr = expr e map (* tuple *)
       in match typ with
-      | Func(in_typ, out_typ) -> let _ = check_asn (fst sexpr) in_typ "type error: function arg"
+      | Func(in_typ, out_typ) as ex -> 
+        let e_typ = fst sexpr in
+        let err = "illegal assignment " ^ string_of_typ in_typ ^ " = " ^ 
+            string_of_typ e_typ ^ " in " ^ string_of_typ ex
+        in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
       | _ -> raise (Failure ("non-function type stored"))
     | _ -> raise (Failure ("not matched"))
