@@ -45,6 +45,9 @@ let check stmts =
     try StringMap.find var map
     with Not_found -> raise (Failure ("undeclared identifier " ^ var))
   in
+  let check_asn left_t right_t err =
+    if left_t = right_t then left_t else raise (Failure err)
+  in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
   let rec expr e map = match e with
@@ -105,17 +108,15 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
-    | FuncCall(var, elist) -> 
-      let sexpr_list = List.map (fun ex -> expr ex map) elist 
-      in let typ = type_of_identifier var map 
+    | FuncCall(var, e) -> 
+      let typ = type_of_identifier var map 
+      and sexpr = expr e map (* tuple *)
       in match typ with
-      | Func(in_typ, out_typ) -> (Func(in_typ, out_typ), SFuncCall(var, sexpr_list))
+      | Func(in_typ, out_typ) -> let _ = check_asn (fst sexpr) in_typ "type error: function arg"
+        in (out_typ, SFuncCall(var, sexpr))
       | _ -> raise (Failure ("non-function type stored"))
     | _ -> raise (Failure ("not matched"))
   in
-  let check_asn left_t right_t err =
-    if left_t = right_t then left_t else raise (Failure err)
-  in 
   let rec check_stmt to_check symbols = 
     match to_check with
     | [] -> symbols
@@ -130,7 +131,7 @@ let check stmts =
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
   in 
-  let symbols_init = StringMap.add "printf" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
+  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
   in 
   let symbols = check_stmt stmts symbols_init
   (* gather sstmt list *)

@@ -32,7 +32,7 @@ type expr =
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
   | FuncDef of expr list * stmt list (* param ids * function body *)
-  | FuncCall of string * expr list
+  | FuncCall of string * expr
   (* | Seq of expr * expr  *)
 
 and stmt =

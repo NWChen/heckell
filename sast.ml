@@ -15,7 +15,7 @@ and sx =
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
   | SFuncDef of sexpr list * sstmt list (* param ids * function body *)
-  | SFuncCall of string * sexpr list
+  | SFuncCall of string * sexpr
 
 and sstmt =
     SAsn of string * sexpr
