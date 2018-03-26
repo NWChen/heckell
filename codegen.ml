@@ -27,7 +27,7 @@ let translate (statement_list) =
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type       context
   and i8_t       = L.i8_type        context 
-  and str_t      = L.const_stringz  context
+  and str_t      = L.pointer_type   i8_t
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   and the_module = L.create_module context "Heckell" in
