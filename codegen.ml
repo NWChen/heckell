@@ -34,8 +34,8 @@ let translate (statement_list) =
 
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
-      A.Int   -> i32_t
-    | A.StringLit -> str_t
+      A.PrimTyp(Int) -> i32_t
+    | A.String       -> str_t
     | t -> raise (Failure ("Type " ^ string_of_prim_typ t ^ " not implemented yet"))
   in
 
