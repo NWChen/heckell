@@ -73,6 +73,7 @@ let check stmts =
     | Lit l -> (PrimTyp(Int), SLit l)
     | RealLit s -> (PrimTyp(Real), SRealLit s)
     | BoolLit b -> (PrimTyp(Bool), SBoolLit b)
+    | StringLit s -> (String, SStringLit s)
     | TupleLit t -> 
       let sexpr_list = List.map (fun ex -> expr ex map) t in
       ( Tuple (List.map fst sexpr_list), 
