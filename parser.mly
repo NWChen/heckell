@@ -110,11 +110,11 @@ expr:
 | LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
-| LBRACKET expr_list_ne ELLIPSE expr RBRACKET 
+| LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
       | [e1; e2] -> ArrayRange(e1, Some e2, $4)
-      | _ -> raise (Failure("Too many arguments for ArrayRange"))
+      | _ -> raise (Failure("Incompatible arguments for ArrayRange"))
     }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
@@ -142,7 +142,7 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI
+| ID LPAREN expr_list RPAREN EQUAL func_stmt_list DSEMI
                            { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
 
 stmt_list:
@@ -174,10 +174,6 @@ expr_list:
 | expr                 { [$1] }
 | expr_list COMMA expr { $3 :: $1 }
 
-expr_list_ne:
-| expr                 { [$1] }
-| expr_list COMMA expr { $3 :: $1 }
-
 /* 
   This is tricky, all our stmts end with semicolon, however 
   the last stmt in this list should end without it as the
@@ -192,7 +188,7 @@ func_stmt_list:
 
 set_build_ext_cond:
   /* nothing */       { [] }
-| COMMA expr_list_ne  { $2 }
+| COMMA expr_list  { $2 }
 
 
 /*formal_opt:
