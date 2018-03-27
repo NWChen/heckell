@@ -82,8 +82,9 @@ let check stmts =
       (String, SInterStringLit (sl, List.map (fun ex -> expr ex map) el))
     | TupleLit t -> 
       let sexpr_list = List.map (fun ex -> expr ex map) t in
-      ( Tuple (List.map fst sexpr_list), 
-        STupleLit (sexpr_list) )
+      (match sexpr_list with
+      | [x] -> x
+      | _ -> ( Tuple (List.map fst sexpr_list), STupleLit (sexpr_list) ) )
     | SetLit l -> 
       let set_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
@@ -109,10 +110,10 @@ let check stmts =
     | FuncCall(var, e) -> 
       let typ = type_of_identifier var map 
       and sexpr = expr e map (* tuple *)
-      in match typ with
-      | Func(in_typ, out_typ) -> let _ = check_asn (fst sexpr) in_typ "type error: function arg"
+      in (match typ with
+      | Func(in_typ, out_typ) -> let _ = check_asn (fst sexpr) in_typ ("type error: function arg " ^ string_of_typ in_typ ^ " = " ^ string_of_typ (fst sexpr))
         in (out_typ, SFuncCall(var, sexpr))
-      | _ -> raise (Failure ("non-function type stored"))
+      | _ -> raise (Failure ("non-function type stored")) )
     | _ -> raise (Failure ("not matched"))
   in
   let rec check_stmt to_check symbols = 
@@ -129,7 +130,7 @@ let check stmts =
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
   in 
-  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
+  let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
   in 
   let symbols = check_stmt stmts symbols_init
   (* gather sstmt list *)

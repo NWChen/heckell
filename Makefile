@@ -11,7 +11,7 @@ all : heckell
 
 # More detailed: build using ocamlc/ocamlopt + ocamlfind to locate LLVM
 
-OBJS = ast.cmx sast.cmx pprinting.cmx codegen.cmx parser.cmx scanner.cmx semant.cmx heckell.cmx
+OBJS = ast.cmx sast.cmx pprinting.cmx parser.cmx scanner.cmx semant.cmx codegen.cmx heckell.cmx
 
 heckell : $(OBJS)
 	ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis $(OBJS) -o heckell
