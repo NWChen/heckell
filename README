@@ -1,0 +1,27 @@
+# Heckell
+Heckell is a programming language for set theory.
+
+## Team
+- Chan Pham, tqp2001@columbia.edu
+- Margaret Qian, myq2000@columbia.edu
+- Sebastian Cueva-Caro, sc3972@columbia.edu
+- Neil Chen, nwc2112@columbia.edu
+
+## Instructions
+### Compiling the compiler
+This project's `Makefile` provides everything needed to build the compiler - just run:
+
+$ make
+
+### Executing the compiler
+To run tests, simply run the `testall.sh` script:
+
+$ ./testall.sh
+
+`testall.sh` runs the `Heckell` compiler (as it stands) on all tests provided in the `tests` directory. We provide 3 positive tests with filenames `test-*.hck`. The test script `testall.sh` prints "SUCCESS" when the generated output matches the expected output.
+
+To pass your own inputs via file to the compiler, run:
+
+$ ./heckell < (your filename)
+
+The output will be the compiled llvm output.
