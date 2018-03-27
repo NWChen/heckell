@@ -1,4 +1,0 @@
-let x: int
-x = 2
-let s: string
-s = "hello \( 3 + 3 )"
