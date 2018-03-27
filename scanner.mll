@@ -18,7 +18,10 @@
 let letter = ['a'-'z' 'A'-'Z' '_' '\'']
 let digit = ['0'-'9']
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 42bef3713c4d47c72ee6cfe466dd3da43a43c41b
 rule tokenize = parse
 | [' ' '\t' '\r' '\n']  { tokenize lexbuf }
 | "/*"                  { comment lexbuf }

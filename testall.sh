@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HECKELL="./heckell"
+HECKELL="./toplevel"
 
 # Path to the LLVM interpreter
 LLI="lli"
