@@ -36,7 +36,7 @@ let rec string_of_typ = function
 
 let rec string_of_expr = function
     Lit(l) -> string_of_int l
-  | RealLit(l) -> l
+  | RealLit(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | CharLit(c) -> "'" ^ Char.escaped c ^ "'"
@@ -51,9 +51,12 @@ let rec string_of_expr = function
       in "\"" ^ interweave_print sl el ^ "\""
   | Id(s) -> s
   | Binop(e1, o, e2) ->
-      string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+      "(" ^ string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2 ^ ")"
   | Uniop(o, e) -> string_of_uop o ^ string_of_expr e
-  | FuncCall(s, e) -> s ^ " " ^ string_of_expr e
+  | FuncCall(s, e) -> (
+    match e with
+    | TupleLit(_) -> s ^ " " ^ string_of_expr e
+    | x -> s ^ " (" ^ string_of_expr x ^ ")" )
   | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
   | ArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_expr el)) ^ "]"
   | ArrayRange(e1, e2, e3) -> 
@@ -72,7 +75,7 @@ let rec string_of_expr = function
                   ^ ", " ^ string_of_expr e2 ^ "}"
     )
   | FuncDef(formals, stmts) ->
-      "(" ^ (String.concat "," (List.map string_of_expr formals)) ^ ") ->\n  (\n    "
+      "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
 
 and string_of_stmt = function
@@ -91,7 +94,7 @@ let string_of_program stmts =
 let rec string_of_sexpr (t, e) = 
   "(" ^ (match e with 
   | SLit(l) -> string_of_int l
-  | SRealLit(l) -> l
+  | SRealLit(l) -> string_of_float l
   | SBoolLit(true) -> "true"
   | SBoolLit(false) -> "false"
   | SCharLit(c) -> "'" ^ Char.escaped c ^ "'"
@@ -108,7 +111,10 @@ let rec string_of_sexpr (t, e) =
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUniop(o, e) -> string_of_uop o ^ string_of_sexpr e
-  | SFuncCall(s, e) -> s ^ " " ^ string_of_sexpr e
+  | SFuncCall(s, e) -> (
+    match e with
+    | (_, STupleLit(_)) -> s ^ " " ^ string_of_sexpr e
+    | x -> s ^ " (" ^ string_of_sexpr x ^ ")" )
   | SSetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "}"
   | SArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "]"
   | SArrayRange(e1, e2, e3) -> 
@@ -126,7 +132,7 @@ let rec string_of_sexpr (t, e) =
                   ^ ", " ^ string_of_sexpr e2 ^ "}"
     )
   | SFuncDef(formals, stmts) ->
-      "(" ^ (String.concat "," (List.map string_of_sexpr formals)) ^ ") ->\n  (\n    "
+      "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_sstmt stmts)) ^ "\n  )"
   ) ^ " : " ^ (string_of_typ t) ^ ")"
 and string_of_sstmt = function

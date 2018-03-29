@@ -24,6 +24,7 @@ let () =
     match !action with
     | Ast -> ()
     | Sast -> print_string (Pprinting.string_of_sprogram sast)
+    | _ -> ()
     | LLVM_IR -> print_string (Llvm.string_of_llmodule (Codegen.translate sast))
     | Compile -> let m = Codegen.translate sast in
   Llvm_analysis.assert_valid_module m;
