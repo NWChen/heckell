@@ -125,20 +125,18 @@ let check stmts =
           try List.map2 (fun a t -> Decl(a, t)) al arg_typs
           with Invalid_argument(_) -> raise(Failure("number of arguments mismatch"))
         in let local_scope = {symb = StringMap.empty; parent = Some scope}
+        in let arg_sdecl = append_sstmt local_scope arg_decl
         in let local_scope = check_stmt arg_decl local_scope
-        in let local_scope = check_stmt sl local_scope
-        in let arg_sdecl = List.map (append_sstmt local_scope) arg_decl
-        in let rec check_body = function
-          | [e] -> (
-            match (append_sstmt local_scope e) with
-            | SExpr(_) as se -> [se]
-            | _ -> raise(Failure("function body must end with expression")) )
-          | h :: t -> (append_sstmt local_scope h) :: check_body t
-          | [] -> print_string (string_of_program sl); raise(Failure("parser should've returned non-empty body"))
-        in let ssl = check_body sl
+        in let _ = check_stmt sl local_scope
+        in let ssl = append_sstmt local_scope sl
+        in let _ = match List.hd (List.rev ssl) with
+          | SExpr(typ, sx) -> 
+            let err = "output type mismatch " ^ string_of_typ out_t ^ " with " ^ string_of_typ typ
+            in check_asn out_t typ err
+          | _ -> raise(Failure("parser shouldn't have returned function not ending with expr"))
         in (func_t, SFuncDef (arg_sdecl, ssl))
       | _ -> raise (Failure("non-function type stored")) )
-    | FuncCall(var, e) -> 
+    | FuncCall(var, e) -> (
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)
       in match typ with
@@ -148,7 +146,7 @@ let check stmts =
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
         in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
-      | _ -> raise (Failure ("non-function type stored"))
+      | _ -> raise (Failure ("non-function type stored")) )
     | _ -> raise (Failure ("not matched"))
   
   and check_stmt to_check symbols = 
@@ -157,21 +155,32 @@ let check stmts =
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
       | Asn(var, e) as st ->
-          let left_t = type_of_identifier var symbols
-          and (right_t, e') = expr e symbols in
-          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
-            string_of_typ right_t ^ " in " ^ string_of_stmt st
-          in let _ = check_asn left_t right_t err 
-          in check_stmt tail symbols
+        let left_t = type_of_identifier var symbols
+        and (right_t, e') = expr e symbols in
+        let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+          string_of_typ right_t ^ " in " ^ string_of_stmt st
+        in let _ = check_asn left_t right_t err 
+        in check_stmt tail symbols
+      | AsnDecl(var, e) -> 
+        let (et, se) = expr e symbols in
+        check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
-  (* gather sstmt list *)
-  and append_sstmt symbols stmt =
-    match stmt with
-    | Expr e -> SExpr (expr e symbols)
-    | Asn(var, e) -> SAsn(var, expr e symbols)
-    | Decl(var, t) -> SDecl(var, t)
+  (* recursively gather sstmt list *)
+  and append_sstmt symbols = function
+    | h :: t -> (
+      match h with
+      | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
+      | Asn(var, e) -> (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+      | Decl(var, tp) -> 
+        let symbols' = add_to_scope var tp symbols in
+        (SDecl(var, tp)) :: (append_sstmt symbols' t)
+      | AsnDecl(var, e) -> 
+        let (tp, se) = expr e symbols in
+        let symbols' = add_to_scope var tp symbols in
+        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t) )
+    | [] -> []
   in
   let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
-  in List.map (append_sstmt symbols) stmts
+  in append_sstmt symbols stmts

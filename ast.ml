@@ -38,6 +38,7 @@ type expr =
 and stmt =
   | Asn of string * expr
   | Decl of string * typ
+  | AsnDecl of string * expr
   | Expr of expr
   | Iter of string * expr
 

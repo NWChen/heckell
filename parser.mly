@@ -144,6 +144,7 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
+| LET ID EQUAL expr SEMI   { AsnDecl($2, $4) }
 | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
                            { Asn($1, FuncDefNamed($1, 
                             (let check_id e = 

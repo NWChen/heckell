@@ -81,6 +81,7 @@ let rec string_of_expr = function
 and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
+  | AsnDecl(s, e) -> "let " ^ s ^ " = " ^ string_of_expr e
   | Expr(e) -> string_of_expr e
   | Iter(s, e) -> s ^ " in " ^ string_of_expr e
 
