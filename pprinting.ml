@@ -74,7 +74,7 @@ let rec string_of_expr = function
                   ^ " | " ^ string_of_stmt s 
                   ^ ", " ^ string_of_expr e2 ^ "}"
     )
-  | FuncDef(formals, stmts) ->
+  | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
 
@@ -132,8 +132,7 @@ let rec string_of_sexpr (t, e) =
                   ^ ", " ^ string_of_sexpr e2 ^ "}"
     )
   | SFuncDef(formals, stmts) ->
-      "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
-      ^ (String.concat ";\n    " (List.map string_of_sstmt stmts)) ^ "\n  )"
+      "(\n    " ^ (String.concat ";\n    " (List.map string_of_sstmt (formals@stmts))) ^ "\n  )"
   ) ^ " : " ^ (string_of_typ t) ^ ")"
 and string_of_sstmt = function
   | SAsn(s, e) -> s ^ " = " ^ string_of_sexpr e

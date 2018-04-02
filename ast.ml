@@ -16,7 +16,7 @@ type typ =
   | PrimTyp of prim_typ
 
 type expr =
-    Id of string
+  | Id of string
   | Binop of expr * op * expr
   | Uniop of uop * expr
   | Lit of int
@@ -31,12 +31,12 @@ type expr =
   | ArrayRange of expr * expr option * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
-  | FuncDef of string list * stmt list (* param ids * function body *)
+  | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)
   | FuncCall of string * expr
   (* | Seq of expr * expr  *)
 
 and stmt =
-    Asn of string * expr
+  | Asn of string * expr
   | Decl of string * typ
   | Expr of expr
   | Iter of string * expr

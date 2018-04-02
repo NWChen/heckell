@@ -119,22 +119,18 @@ expr:
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
     { SetBuilder(
-        (* identity function *)
-        None, 
+        None, (* identity function *)
         Iter($2, $4), 
-        FuncDef([$2], [Expr(
-          List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
-        )])
+        List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
       )}
 | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
     { SetBuilder(
-        Some(FuncDef([$4], [Expr($2)])), 
+        Some($2), 
         Iter($4, $6),
-        FuncDef([$4], [Expr(
-          match (List.rev $7) with
+        ( match (List.rev $7) with
           | [] -> BoolLit(true)
           | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
-        )])
+        )
       )}
 
 single_or_tuple:
@@ -149,7 +145,7 @@ stmt:
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
 | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
-                           { Asn($1, FuncDef(
+                           { Asn($1, FuncDefNamed($1, 
                             (let check_id e = 
                               match e with
                               | Id(s) -> s
