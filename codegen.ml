@@ -61,35 +61,21 @@ let translate (statement_list) =
   (* Generate the instructions for a trivial "main" function *)
   let build_function fdecl =
     (* Generate LLVM code for a call to Heckell's "print" *)
-    (*let rec exprb builder ((_, e) : sexpr) = print_endline "exprb"; match e with*)
     let rec exprb builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
-      | SStringLit s -> (* L.const_stringz context s *)
+      | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
         | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder(* ; L.build_ret (exprb builder (se_t, se)) builder  *)
+          "printf" builder
         | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder(* ; L.build_ret (L.const_int i32_t 0) builder  *)
+          "printf" builder
         | _ -> to_imp "")
       (* Throw an error for any other expressions *)
       | _ -> to_imp ""
-    (*let builder = exprb builder fdecl in*)
-    (*in let _ = exprb builder fdecl in ()*)
     in match fdecl with
     | SExpr e -> ignore(exprb builder e)
     | _ -> ()
 
-    (*in exprb builder fdecl*)
-    (* Deal with a block of expression statements, terminated by a return *)
-(*     let rec stmt builder = function
-        SBlock sl -> List.fold_left stmt builder sl
-      | SExpr e -> let _ = expr builder e in builder 
-      | s -> to_imp (string_of_sstmt s) *)
-    (* Generate the instructions for the function's body, 
-       which mutates the_module *)
-    (* in ignore(stmt builder (SBlock fdecl.sbody)) *)
-  (* Build each function (there should only be one for Hello World), 
-     and return the final module *)
   in List.iter build_function statement_list; L.build_ret (L.const_int i32_t 0) builder;
   the_module
