@@ -24,6 +24,6 @@ and sstmt =
   | SAsn of string * sexpr
   | SDecl of string * typ
   | SExpr of sexpr
-  | SIter of string * sexpr
+  | SIter of sstmt list * sexpr (* decl list * set *)
 
 type sprogram = sstmt list

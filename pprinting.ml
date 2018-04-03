@@ -16,6 +16,7 @@ let string_of_op = function
   | Geq -> ">="
   | And -> "and"
   | Or -> "or"
+  | Member -> "in"
 
 let string_of_uop = function
     Neg -> "-"
@@ -83,7 +84,7 @@ and string_of_stmt = function
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
   | AsnDecl(s, e) -> "let " ^ s ^ " = " ^ string_of_expr e
   | Expr(e) -> string_of_expr e
-  | Iter(s, e) -> s ^ " in " ^ string_of_expr e
+  | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
@@ -139,7 +140,12 @@ and string_of_sstmt = function
   | SAsn(s, e) -> s ^ " = " ^ string_of_sexpr e
   | SDecl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
   | SExpr(e) -> string_of_sexpr e
-  | SIter(s, e) -> s ^ " in " ^ string_of_sexpr e
+  | SIter(sl, e) -> 
+    let helper = function
+      | SDecl(s, t) -> s ^ ": " ^ string_of_typ t
+      | _ -> raise(Failure("SIter should have SDecl only"))
+    in let str_sdecl = List.map helper sl
+    in "(" ^ (String.concat ", " str_sdecl) ^ ") in " ^ string_of_sexpr e
 
 let string_of_sprogram sstmts = 
   String.concat "\n" (List.map string_of_sstmt sstmts) ^ "\n"

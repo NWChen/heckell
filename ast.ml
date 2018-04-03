@@ -1,6 +1,7 @@
 type op = 
   Add | Sub | Mul | Div | Equal | Neq 
 | Less | Leq | Greater | Geq | And | Or
+| Member
 
 type uop = Neg
 
@@ -40,7 +41,7 @@ and stmt =
   | Decl of string * typ
   | AsnDecl of string * expr
   | Expr of expr
-  | Iter of string * expr
+  | Iter of string list * expr
 
 type program = stmt list
 (* TODO: op for `(...)` (PARAMS) *)

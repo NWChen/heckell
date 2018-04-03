@@ -103,6 +103,11 @@ let check stmts =
         | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
         | true -> (Set(set_t), SSetLit (sexpr_list))
       )
+    (* | SetBuilder(epot, st, ex) ->
+      match st with
+      | Iter(sl, ex)
+      TODO: make iter into expression parser-wise and choose between iter and member
+       *)
     | ArrayLit l ->
       let arr_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)

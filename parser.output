@@ -39,43 +39,41 @@
   32       | expr GEQ expr
   33       | expr AND expr
   34       | expr OR expr
-  35       | ID single_or_tuple
-  36       | single_or_tuple
-  37       | LBRACE expr_list RBRACE
-  38       | LBRACKET expr_list RBRACKET
-  39       | LBRACKET expr_list_ne ELLIPSE expr RBRACKET
-  40       | LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE
-  41       | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
+  35       | expr IN expr
+  36       | ID single_or_tuple
+  37       | single_or_tuple
+  38       | LBRACE expr_list RBRACE
+  39       | LBRACKET expr_list RBRACKET
+  40       | LBRACKET expr_list_ne ELLIPSE expr RBRACKET
+  41       | LBRACE expr PIPE expr_list_ne RBRACE
 
   42  single_or_tuple : LPAREN expr_list_ne RPAREN
 
   43  stmt : expr SEMI
   44       | ID EQUAL expr SEMI
   45       | LET ID COLON typ SEMI
-  46       | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI
+  46       | LET ID EQUAL expr SEMI
+  47       | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
 
-  47  stmt_list :
-  48            | stmt_list stmt
+  48  stmt_list :
+  49            | stmt_list stmt
 
-  49  string_lit : STRINGLIT
-  50             | BEGINTERSTRING mid_inter_string ENDINTERSTRING
+  50  string_lit : STRINGLIT
+  51             | BEGINTERSTRING mid_inter_string ENDINTERSTRING
 
-  51  mid_inter_string : expr
-  52                   | mid_inter_string MIDINTERSTRING expr
+  52  mid_inter_string : expr
+  53                   | mid_inter_string MIDINTERSTRING expr
 
-  53  expr_list :
-  54            | expr
-  55            | expr_list COMMA expr
+  54  expr_list :
+  55            | expr
+  56            | expr_list COMMA expr
 
-  56  expr_list_ne : expr
-  57               | expr_list COMMA expr
+  57  expr_list_ne : expr
+  58               | expr_list COMMA expr
 
-  58  func_stmt_list : stmt_list expr
+  59  func_stmt_list : stmt_list expr
 
-  59  set_build_ext_cond :
-  60                     | COMMA expr_list_ne
-
-  61  %entry% : '\001' program
+  60  %entry% : '\001' program
 
 state 0
 	$accept : . %entry% $end  (0)
@@ -87,10 +85,10 @@ state 0
 
 
 state 1
-	%entry% : '\001' . program  (61)
-	stmt_list : .  (47)
+	%entry% : '\001' . program  (60)
+	stmt_list : .  (48)
 
-	.  reduce 47
+	.  reduce 48
 
 	program  goto 3
 	stmt_list  goto 4
@@ -103,14 +101,14 @@ state 2
 
 
 state 3
-	%entry% : '\001' program .  (61)
+	%entry% : '\001' program .  (60)
 
-	.  reduce 61
+	.  reduce 60
 
 
 state 4
 	program : stmt_list . EOF  (1)
-	stmt_list : stmt_list . stmt  (48)
+	stmt_list : stmt_list . stmt  (49)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -134,9 +132,9 @@ state 4
 
 
 state 5
-	expr : LBRACKET . expr_list RBRACKET  (38)
-	expr : LBRACKET . expr_list_ne ELLIPSE expr RBRACKET  (39)
-	expr_list : .  (53)
+	expr : LBRACKET . expr_list RBRACKET  (39)
+	expr : LBRACKET . expr_list_ne ELLIPSE expr RBRACKET  (40)
+	expr_list : .  (54)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -149,8 +147,8 @@ state 5
 	STRINGLIT  shift 14
 	BEGINTERSTRING  shift 15
 	ID  shift 22
-	RBRACKET  reduce 53
-	COMMA  reduce 53
+	RBRACKET  reduce 54
+	COMMA  reduce 54
 
 	expr  goto 23
 	string_lit  goto 19
@@ -161,7 +159,7 @@ state 5
 
 state 6
 	single_or_tuple : LPAREN . expr_list_ne RPAREN  (42)
-	expr_list : .  (53)
+	expr_list : .  (54)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -174,7 +172,7 @@ state 6
 	STRINGLIT  shift 14
 	BEGINTERSTRING  shift 15
 	ID  shift 22
-	COMMA  reduce 53
+	COMMA  reduce 54
 
 	expr  goto 23
 	string_lit  goto 19
@@ -184,10 +182,9 @@ state 6
 
 
 state 7
-	expr : LBRACE . expr_list RBRACE  (37)
-	expr : LBRACE . ID IN expr PIPE expr set_build_ext_cond RBRACE  (40)
-	expr : LBRACE . expr PIPE ID IN expr set_build_ext_cond RBRACE  (41)
-	expr_list : .  (53)
+	expr : LBRACE . expr_list RBRACE  (38)
+	expr : LBRACE . expr PIPE expr_list_ne RBRACE  (41)
+	expr_list : .  (54)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -199,20 +196,21 @@ state 7
 	BOOLLIT  shift 13
 	STRINGLIT  shift 14
 	BEGINTERSTRING  shift 15
-	ID  shift 28
-	RBRACE  reduce 53
-	COMMA  reduce 53
+	ID  shift 22
+	RBRACE  reduce 54
+	COMMA  reduce 54
 
-	expr  goto 29
+	expr  goto 28
 	string_lit  goto 19
 	single_or_tuple  goto 20
-	expr_list  goto 30
+	expr_list  goto 29
 
 
 state 8
 	stmt : LET . ID COLON typ SEMI  (45)
+	stmt : LET . ID EQUAL expr SEMI  (46)
 
-	ID  shift 31
+	ID  shift 30
 	.  error
 
 
@@ -232,7 +230,7 @@ state 9
 	ID  shift 22
 	.  error
 
-	expr  goto 32
+	expr  goto 31
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -262,13 +260,13 @@ state 13
 
 
 state 14
-	string_lit : STRINGLIT .  (49)
+	string_lit : STRINGLIT .  (50)
 
-	.  reduce 49
+	.  reduce 50
 
 
 state 15
-	string_lit : BEGINTERSTRING . mid_inter_string ENDINTERSTRING  (50)
+	string_lit : BEGINTERSTRING . mid_inter_string ENDINTERSTRING  (51)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -283,22 +281,23 @@ state 15
 	ID  shift 22
 	.  error
 
-	expr  goto 33
+	expr  goto 32
 	string_lit  goto 19
 	single_or_tuple  goto 20
-	mid_inter_string  goto 34
+	mid_inter_string  goto 33
 
 
 state 16
 	expr : ID .  (16)
-	expr : ID . single_or_tuple  (35)
+	expr : ID . single_or_tuple  (36)
 	stmt : ID . EQUAL expr SEMI  (44)
-	stmt : ID . LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI  (46)
+	stmt : ID . LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END  (47)
 
-	LPAREN  shift 35
-	EQUAL  shift 36
+	LPAREN  shift 34
+	EQUAL  shift 35
+	IN  reduce 16
 	SEMI  reduce 16
-	DSEMI  reduce 16
+	END  reduce 16
 	EQ  reduce 16
 	NEQ  reduce 16
 	LT  reduce 16
@@ -312,7 +311,7 @@ state 16
 	TIMES  reduce 16
 	DIVIDE  reduce 16
 
-	single_or_tuple  goto 37
+	single_or_tuple  goto 36
 
 
 state 17
@@ -334,8 +333,10 @@ state 18
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 	stmt : expr . SEMI  (43)
 
+	IN  shift 37
 	SEMI  shift 38
 	EQ  shift 39
 	NEQ  shift 40
@@ -359,28 +360,29 @@ state 19
 
 
 state 20
-	expr : single_or_tuple .  (36)
+	expr : single_or_tuple .  (37)
 
-	.  reduce 36
+	.  reduce 37
 
 
 state 21
-	stmt_list : stmt_list stmt .  (48)
+	stmt_list : stmt_list stmt .  (49)
 
-	.  reduce 48
+	.  reduce 49
 
 
 state 22
 	expr : ID .  (16)
-	expr : ID . single_or_tuple  (35)
+	expr : ID . single_or_tuple  (36)
 
 	LPAREN  shift 6
 	RBRACKET  reduce 16
 	RPAREN  reduce 16
 	RBRACE  reduce 16
+	IN  reduce 16
 	COMMA  reduce 16
 	SEMI  reduce 16
-	DSEMI  reduce 16
+	END  reduce 16
 	EQ  reduce 16
 	NEQ  reduce 16
 	LT  reduce 16
@@ -398,7 +400,7 @@ state 22
 	MIDINTERSTRING  reduce 16
 	ENDINTERSTRING  reduce 16
 
-	single_or_tuple  goto 37
+	single_or_tuple  goto 36
 
 
 state 23
@@ -414,9 +416,11 @@ state 23
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	expr_list : expr .  (54)
-	expr_list_ne : expr .  (56)
+	expr : expr . IN expr  (35)
+	expr_list : expr .  (55)
+	expr_list_ne : expr .  (57)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -429,17 +433,17 @@ state 23
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	RBRACKET  reduce 54
-	RPAREN  reduce 56
-	RBRACE  reduce 56
-	COMMA  reduce 54
-	ELLIPSE  reduce 56
+	RBRACKET  reduce 55
+	RPAREN  reduce 57
+	RBRACE  reduce 57
+	COMMA  reduce 55
+	ELLIPSE  reduce 57
 
 
 state 24
-	expr : LBRACKET expr_list . RBRACKET  (38)
-	expr_list : expr_list . COMMA expr  (55)
-	expr_list_ne : expr_list . COMMA expr  (57)
+	expr : LBRACKET expr_list . RBRACKET  (39)
+	expr_list : expr_list . COMMA expr  (56)
+	expr_list_ne : expr_list . COMMA expr  (58)
 
 	RBRACKET  shift 51
 	COMMA  shift 52
@@ -447,15 +451,15 @@ state 24
 
 
 state 25
-	expr : LBRACKET expr_list_ne . ELLIPSE expr RBRACKET  (39)
+	expr : LBRACKET expr_list_ne . ELLIPSE expr RBRACKET  (40)
 
 	ELLIPSE  shift 53
 	.  error
 
 
 state 26
-	expr_list : expr_list . COMMA expr  (55)
-	expr_list_ne : expr_list . COMMA expr  (57)
+	expr_list : expr_list . COMMA expr  (56)
+	expr_list_ne : expr_list . COMMA expr  (58)
 
 	COMMA  shift 52
 	.  error
@@ -469,32 +473,6 @@ state 27
 
 
 state 28
-	expr : ID .  (16)
-	expr : ID . single_or_tuple  (35)
-	expr : LBRACE ID . IN expr PIPE expr set_build_ext_cond RBRACE  (40)
-
-	LPAREN  shift 6
-	IN  shift 55
-	RBRACE  reduce 16
-	COMMA  reduce 16
-	EQ  reduce 16
-	NEQ  reduce 16
-	LT  reduce 16
-	LEQ  reduce 16
-	GT  reduce 16
-	GEQ  reduce 16
-	AND  reduce 16
-	OR  reduce 16
-	PLUS  reduce 16
-	MINUS  reduce 16
-	TIMES  reduce 16
-	DIVIDE  reduce 16
-	PIPE  reduce 16
-
-	single_or_tuple  goto 37
-
-
-state 29
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -507,9 +485,11 @@ state 29
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	expr : LBRACE expr . PIPE ID IN expr set_build_ext_cond RBRACE  (41)
-	expr_list : expr .  (54)
+	expr : expr . IN expr  (35)
+	expr : LBRACE expr . PIPE expr_list_ne RBRACE  (41)
+	expr_list : expr .  (55)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -522,28 +502,30 @@ state 29
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	PIPE  shift 56
-	RBRACE  reduce 54
-	COMMA  reduce 54
+	PIPE  shift 55
+	RBRACE  reduce 55
+	COMMA  reduce 55
+
+
+state 29
+	expr : LBRACE expr_list . RBRACE  (38)
+	expr_list : expr_list . COMMA expr  (56)
+
+	RBRACE  shift 56
+	COMMA  shift 57
+	.  error
 
 
 state 30
-	expr : LBRACE expr_list . RBRACE  (37)
-	expr_list : expr_list . COMMA expr  (55)
+	stmt : LET ID . COLON typ SEMI  (45)
+	stmt : LET ID . EQUAL expr SEMI  (46)
 
-	RBRACE  shift 57
-	COMMA  shift 58
+	COLON  shift 58
+	EQUAL  shift 59
 	.  error
 
 
 state 31
-	stmt : LET ID . COLON typ SEMI  (45)
-
-	COLON  shift 59
-	.  error
-
-
-state 32
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -557,11 +539,12 @@ state 32
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
 	.  reduce 26
 
 
-state 33
+state 32
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -574,8 +557,10 @@ state 33
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	mid_inter_string : expr .  (51)
+	expr : expr . IN expr  (35)
+	mid_inter_string : expr .  (52)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -588,23 +573,23 @@ state 33
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	MIDINTERSTRING  reduce 51
-	ENDINTERSTRING  reduce 51
+	MIDINTERSTRING  reduce 52
+	ENDINTERSTRING  reduce 52
 
 
-state 34
-	string_lit : BEGINTERSTRING mid_inter_string . ENDINTERSTRING  (50)
-	mid_inter_string : mid_inter_string . MIDINTERSTRING expr  (52)
+state 33
+	string_lit : BEGINTERSTRING mid_inter_string . ENDINTERSTRING  (51)
+	mid_inter_string : mid_inter_string . MIDINTERSTRING expr  (53)
 
 	MIDINTERSTRING  shift 60
 	ENDINTERSTRING  shift 61
 	.  error
 
 
-state 35
+state 34
 	single_or_tuple : LPAREN . expr_list_ne RPAREN  (42)
-	stmt : ID LPAREN . expr_list_ne RPAREN EQUAL func_stmt_list DSEMI  (46)
-	expr_list : .  (53)
+	stmt : ID LPAREN . expr_list_ne RPAREN EQUAL func_stmt_list END  (47)
+	expr_list : .  (54)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -617,7 +602,7 @@ state 35
 	STRINGLIT  shift 14
 	BEGINTERSTRING  shift 15
 	ID  shift 22
-	COMMA  reduce 53
+	COMMA  reduce 54
 
 	expr  goto 23
 	string_lit  goto 19
@@ -626,7 +611,7 @@ state 35
 	expr_list_ne  goto 62
 
 
-state 36
+state 35
 	stmt : ID EQUAL . expr SEMI  (44)
 
 	LBRACKET  shift 5
@@ -647,10 +632,31 @@ state 36
 	single_or_tuple  goto 20
 
 
-state 37
-	expr : ID single_or_tuple .  (35)
+state 36
+	expr : ID single_or_tuple .  (36)
 
-	.  reduce 35
+	.  reduce 36
+
+
+state 37
+	expr : expr IN . expr  (35)
+
+	LBRACKET  shift 5
+	LPAREN  shift 6
+	LBRACE  shift 7
+	MINUS  shift 9
+	LITERAL  shift 10
+	REALLIT  shift 11
+	CHARLIT  shift 12
+	BOOLLIT  shift 13
+	STRINGLIT  shift 14
+	BEGINTERSTRING  shift 15
+	ID  shift 22
+	.  error
+
+	expr  goto 64
+	string_lit  goto 19
+	single_or_tuple  goto 20
 
 
 state 38
@@ -675,7 +681,7 @@ state 39
 	ID  shift 22
 	.  error
 
-	expr  goto 64
+	expr  goto 65
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -696,7 +702,7 @@ state 40
 	ID  shift 22
 	.  error
 
-	expr  goto 65
+	expr  goto 66
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -717,7 +723,7 @@ state 41
 	ID  shift 22
 	.  error
 
-	expr  goto 66
+	expr  goto 67
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -738,7 +744,7 @@ state 42
 	ID  shift 22
 	.  error
 
-	expr  goto 67
+	expr  goto 68
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -759,7 +765,7 @@ state 43
 	ID  shift 22
 	.  error
 
-	expr  goto 68
+	expr  goto 69
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -780,7 +786,7 @@ state 44
 	ID  shift 22
 	.  error
 
-	expr  goto 69
+	expr  goto 70
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -801,7 +807,7 @@ state 45
 	ID  shift 22
 	.  error
 
-	expr  goto 70
+	expr  goto 71
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -822,7 +828,7 @@ state 46
 	ID  shift 22
 	.  error
 
-	expr  goto 71
+	expr  goto 72
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -843,7 +849,7 @@ state 47
 	ID  shift 22
 	.  error
 
-	expr  goto 72
+	expr  goto 73
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -864,7 +870,7 @@ state 48
 	ID  shift 22
 	.  error
 
-	expr  goto 73
+	expr  goto 74
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -885,7 +891,7 @@ state 49
 	ID  shift 22
 	.  error
 
-	expr  goto 74
+	expr  goto 75
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
@@ -906,41 +912,20 @@ state 50
 	ID  shift 22
 	.  error
 
-	expr  goto 75
-	string_lit  goto 19
-	single_or_tuple  goto 20
-
-
-state 51
-	expr : LBRACKET expr_list RBRACKET .  (38)
-
-	.  reduce 38
-
-
-state 52
-	expr_list : expr_list COMMA . expr  (55)
-	expr_list_ne : expr_list COMMA . expr  (57)
-
-	LBRACKET  shift 5
-	LPAREN  shift 6
-	LBRACE  shift 7
-	MINUS  shift 9
-	LITERAL  shift 10
-	REALLIT  shift 11
-	CHARLIT  shift 12
-	BOOLLIT  shift 13
-	STRINGLIT  shift 14
-	BEGINTERSTRING  shift 15
-	ID  shift 22
-	.  error
-
 	expr  goto 76
 	string_lit  goto 19
 	single_or_tuple  goto 20
 
 
-state 53
-	expr : LBRACKET expr_list_ne ELLIPSE . expr RBRACKET  (39)
+state 51
+	expr : LBRACKET expr_list RBRACKET .  (39)
+
+	.  reduce 39
+
+
+state 52
+	expr_list : expr_list COMMA . expr  (56)
+	expr_list_ne : expr_list COMMA . expr  (58)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -960,14 +945,8 @@ state 53
 	single_or_tuple  goto 20
 
 
-state 54
-	single_or_tuple : LPAREN expr_list_ne RPAREN .  (42)
-
-	.  reduce 42
-
-
-state 55
-	expr : LBRACE ID IN . expr PIPE expr set_build_ext_cond RBRACE  (40)
+state 53
+	expr : LBRACKET expr_list_ne ELLIPSE . expr RBRACKET  (40)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -987,21 +966,44 @@ state 55
 	single_or_tuple  goto 20
 
 
-state 56
-	expr : LBRACE expr PIPE . ID IN expr set_build_ext_cond RBRACE  (41)
+state 54
+	single_or_tuple : LPAREN expr_list_ne RPAREN .  (42)
 
-	ID  shift 79
-	.  error
+	.  reduce 42
+
+
+state 55
+	expr : LBRACE expr PIPE . expr_list_ne RBRACE  (41)
+	expr_list : .  (54)
+
+	LBRACKET  shift 5
+	LPAREN  shift 6
+	LBRACE  shift 7
+	MINUS  shift 9
+	LITERAL  shift 10
+	REALLIT  shift 11
+	CHARLIT  shift 12
+	BOOLLIT  shift 13
+	STRINGLIT  shift 14
+	BEGINTERSTRING  shift 15
+	ID  shift 22
+	COMMA  reduce 54
+
+	expr  goto 23
+	string_lit  goto 19
+	single_or_tuple  goto 20
+	expr_list  goto 26
+	expr_list_ne  goto 79
+
+
+state 56
+	expr : LBRACE expr_list RBRACE .  (38)
+
+	.  reduce 38
 
 
 state 57
-	expr : LBRACE expr_list RBRACE .  (37)
-
-	.  reduce 37
-
-
-state 58
-	expr_list : expr_list COMMA . expr  (55)
+	expr_list : expr_list COMMA . expr  (56)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -1021,7 +1023,7 @@ state 58
 	single_or_tuple  goto 20
 
 
-state 59
+state 58
 	stmt : LET ID COLON . typ SEMI  (45)
 
 	LPAREN  shift 81
@@ -1037,8 +1039,8 @@ state 59
 	simple_typ_or_tuple  goto 89
 
 
-state 60
-	mid_inter_string : mid_inter_string MIDINTERSTRING . expr  (52)
+state 59
+	stmt : LET ID EQUAL . expr SEMI  (46)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -1058,17 +1060,38 @@ state 60
 	single_or_tuple  goto 20
 
 
-state 61
-	string_lit : BEGINTERSTRING mid_inter_string ENDINTERSTRING .  (50)
+state 60
+	mid_inter_string : mid_inter_string MIDINTERSTRING . expr  (53)
 
-	.  reduce 50
+	LBRACKET  shift 5
+	LPAREN  shift 6
+	LBRACE  shift 7
+	MINUS  shift 9
+	LITERAL  shift 10
+	REALLIT  shift 11
+	CHARLIT  shift 12
+	BOOLLIT  shift 13
+	STRINGLIT  shift 14
+	BEGINTERSTRING  shift 15
+	ID  shift 22
+	.  error
+
+	expr  goto 91
+	string_lit  goto 19
+	single_or_tuple  goto 20
+
+
+state 61
+	string_lit : BEGINTERSTRING mid_inter_string ENDINTERSTRING .  (51)
+
+	.  reduce 51
 
 
 state 62
 	single_or_tuple : LPAREN expr_list_ne . RPAREN  (42)
-	stmt : ID LPAREN expr_list_ne . RPAREN EQUAL func_stmt_list DSEMI  (46)
+	stmt : ID LPAREN expr_list_ne . RPAREN EQUAL func_stmt_list END  (47)
 
-	RPAREN  shift 91
+	RPAREN  shift 92
 	.  error
 
 
@@ -1085,9 +1108,11 @@ state 63
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 	stmt : ID EQUAL expr . SEMI  (44)
 
-	SEMI  shift 92
+	IN  shift 37
+	SEMI  shift 93
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1109,6 +1134,47 @@ state 64
 	expr : expr . TIMES expr  (24)
 	expr : expr . DIVIDE expr  (25)
 	expr : expr . EQ expr  (27)
+	expr : expr . NEQ expr  (28)
+	expr : expr . LT expr  (29)
+	expr : expr . LEQ expr  (30)
+	expr : expr . GT expr  (31)
+	expr : expr . GEQ expr  (32)
+	expr : expr . AND expr  (33)
+	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
+	expr : expr IN expr .  (35)
+
+	PLUS  shift 47
+	MINUS  shift 48
+	TIMES  shift 49
+	DIVIDE  shift 50
+	RBRACKET  reduce 35
+	RPAREN  reduce 35
+	RBRACE  reduce 35
+	IN  reduce 35
+	COMMA  reduce 35
+	SEMI  reduce 35
+	END  reduce 35
+	EQ  reduce 35
+	NEQ  reduce 35
+	LT  reduce 35
+	LEQ  reduce 35
+	GT  reduce 35
+	GEQ  reduce 35
+	AND  reduce 35
+	OR  reduce 35
+	PIPE  reduce 35
+	ELLIPSE  reduce 35
+	MIDINTERSTRING  reduce 35
+	ENDINTERSTRING  reduce 35
+
+
+state 65
+	expr : expr . PLUS expr  (22)
+	expr : expr . MINUS expr  (23)
+	expr : expr . TIMES expr  (24)
+	expr : expr . DIVIDE expr  (25)
+	expr : expr . EQ expr  (27)
 	expr : expr EQ expr .  (27)
 	expr : expr . NEQ expr  (28)
 	expr : expr . LT expr  (29)
@@ -1117,7 +1183,9 @@ state 64
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	LT  shift 41
 	LEQ  shift 42
 	GT  shift 43
@@ -1131,7 +1199,7 @@ state 64
 	RBRACE  reduce 27
 	COMMA  reduce 27
 	SEMI  reduce 27
-	DSEMI  reduce 27
+	END  reduce 27
 	EQ  reduce 27
 	NEQ  reduce 27
 	AND  reduce 27
@@ -1142,7 +1210,7 @@ state 64
 	ENDINTERSTRING  reduce 27
 
 
-state 65
+state 66
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1156,7 +1224,9 @@ state 65
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	LT  shift 41
 	LEQ  shift 42
 	GT  shift 43
@@ -1170,7 +1240,7 @@ state 65
 	RBRACE  reduce 28
 	COMMA  reduce 28
 	SEMI  reduce 28
-	DSEMI  reduce 28
+	END  reduce 28
 	EQ  reduce 28
 	NEQ  reduce 28
 	AND  reduce 28
@@ -1181,7 +1251,7 @@ state 65
 	ENDINTERSTRING  reduce 28
 
 
-state 66
+state 67
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1195,7 +1265,9 @@ state 66
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	PLUS  shift 47
 	MINUS  shift 48
 	TIMES  shift 49
@@ -1205,7 +1277,7 @@ state 66
 	RBRACE  reduce 29
 	COMMA  reduce 29
 	SEMI  reduce 29
-	DSEMI  reduce 29
+	END  reduce 29
 	EQ  reduce 29
 	NEQ  reduce 29
 	LT  reduce 29
@@ -1220,7 +1292,7 @@ state 66
 	ENDINTERSTRING  reduce 29
 
 
-state 67
+state 68
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1234,7 +1306,9 @@ state 67
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	PLUS  shift 47
 	MINUS  shift 48
 	TIMES  shift 49
@@ -1244,7 +1318,7 @@ state 67
 	RBRACE  reduce 30
 	COMMA  reduce 30
 	SEMI  reduce 30
-	DSEMI  reduce 30
+	END  reduce 30
 	EQ  reduce 30
 	NEQ  reduce 30
 	LT  reduce 30
@@ -1259,7 +1333,7 @@ state 67
 	ENDINTERSTRING  reduce 30
 
 
-state 68
+state 69
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1273,7 +1347,9 @@ state 68
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	PLUS  shift 47
 	MINUS  shift 48
 	TIMES  shift 49
@@ -1283,7 +1359,7 @@ state 68
 	RBRACE  reduce 31
 	COMMA  reduce 31
 	SEMI  reduce 31
-	DSEMI  reduce 31
+	END  reduce 31
 	EQ  reduce 31
 	NEQ  reduce 31
 	LT  reduce 31
@@ -1298,7 +1374,7 @@ state 68
 	ENDINTERSTRING  reduce 31
 
 
-state 69
+state 70
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1312,7 +1388,9 @@ state 69
 	expr : expr GEQ expr .  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	PLUS  shift 47
 	MINUS  shift 48
 	TIMES  shift 49
@@ -1322,7 +1400,7 @@ state 69
 	RBRACE  reduce 32
 	COMMA  reduce 32
 	SEMI  reduce 32
-	DSEMI  reduce 32
+	END  reduce 32
 	EQ  reduce 32
 	NEQ  reduce 32
 	LT  reduce 32
@@ -1337,7 +1415,7 @@ state 69
 	ENDINTERSTRING  reduce 32
 
 
-state 70
+state 71
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1351,7 +1429,9 @@ state 70
 	expr : expr . AND expr  (33)
 	expr : expr AND expr .  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1367,7 +1447,7 @@ state 70
 	RBRACE  reduce 33
 	COMMA  reduce 33
 	SEMI  reduce 33
-	DSEMI  reduce 33
+	END  reduce 33
 	AND  reduce 33
 	OR  reduce 33
 	PIPE  reduce 33
@@ -1376,7 +1456,7 @@ state 70
 	ENDINTERSTRING  reduce 33
 
 
-state 71
+state 72
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1390,7 +1470,9 @@ state 71
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
 	expr : expr OR expr .  (34)
+	expr : expr . IN expr  (35)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1407,7 +1489,7 @@ state 71
 	RBRACE  reduce 34
 	COMMA  reduce 34
 	SEMI  reduce 34
-	DSEMI  reduce 34
+	END  reduce 34
 	OR  reduce 34
 	PIPE  reduce 34
 	ELLIPSE  reduce 34
@@ -1415,7 +1497,7 @@ state 71
 	ENDINTERSTRING  reduce 34
 
 
-state 72
+state 73
 	expr : expr . PLUS expr  (22)
 	expr : expr PLUS expr .  (22)
 	expr : expr . MINUS expr  (23)
@@ -1429,15 +1511,17 @@ state 72
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
 	TIMES  shift 49
 	DIVIDE  shift 50
 	RBRACKET  reduce 22
 	RPAREN  reduce 22
 	RBRACE  reduce 22
+	IN  reduce 22
 	COMMA  reduce 22
 	SEMI  reduce 22
-	DSEMI  reduce 22
+	END  reduce 22
 	EQ  reduce 22
 	NEQ  reduce 22
 	LT  reduce 22
@@ -1454,7 +1538,7 @@ state 72
 	ENDINTERSTRING  reduce 22
 
 
-state 73
+state 74
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr MINUS expr .  (23)
@@ -1468,15 +1552,17 @@ state 73
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
 	TIMES  shift 49
 	DIVIDE  shift 50
 	RBRACKET  reduce 23
 	RPAREN  reduce 23
 	RBRACE  reduce 23
+	IN  reduce 23
 	COMMA  reduce 23
 	SEMI  reduce 23
-	DSEMI  reduce 23
+	END  reduce 23
 	EQ  reduce 23
 	NEQ  reduce 23
 	LT  reduce 23
@@ -1493,7 +1579,7 @@ state 73
 	ENDINTERSTRING  reduce 23
 
 
-state 74
+state 75
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1507,11 +1593,12 @@ state 74
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
 	.  reduce 24
 
 
-state 75
+state 76
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -1525,43 +1612,9 @@ state 75
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 
 	.  reduce 25
-
-
-state 76
-	expr : expr . PLUS expr  (22)
-	expr : expr . MINUS expr  (23)
-	expr : expr . TIMES expr  (24)
-	expr : expr . DIVIDE expr  (25)
-	expr : expr . EQ expr  (27)
-	expr : expr . NEQ expr  (28)
-	expr : expr . LT expr  (29)
-	expr : expr . LEQ expr  (30)
-	expr : expr . GT expr  (31)
-	expr : expr . GEQ expr  (32)
-	expr : expr . AND expr  (33)
-	expr : expr . OR expr  (34)
-	expr_list : expr_list COMMA expr .  (55)
-	expr_list_ne : expr_list COMMA expr .  (57)
-
-	EQ  shift 39
-	NEQ  shift 40
-	LT  shift 41
-	LEQ  shift 42
-	GT  shift 43
-	GEQ  shift 44
-	AND  shift 45
-	OR  shift 46
-	PLUS  shift 47
-	MINUS  shift 48
-	TIMES  shift 49
-	DIVIDE  shift 50
-	RBRACKET  reduce 55
-	RPAREN  reduce 57
-	RBRACE  reduce 57
-	COMMA  reduce 55
-	ELLIPSE  reduce 57
 
 
 state 77
@@ -1577,9 +1630,11 @@ state 77
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	expr : LBRACKET expr_list_ne ELLIPSE expr . RBRACKET  (39)
+	expr : expr . IN expr  (35)
+	expr_list : expr_list COMMA expr .  (56)
+	expr_list_ne : expr_list COMMA expr .  (58)
 
-	RBRACKET  shift 93
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1592,7 +1647,11 @@ state 77
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	.  error
+	RBRACKET  reduce 56
+	RPAREN  reduce 58
+	RBRACE  reduce 58
+	COMMA  reduce 56
+	ELLIPSE  reduce 58
 
 
 state 78
@@ -1608,8 +1667,11 @@ state 78
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	expr : LBRACE ID IN expr . PIPE expr set_build_ext_cond RBRACE  (40)
+	expr : expr . IN expr  (35)
+	expr : LBRACKET expr_list_ne ELLIPSE expr . RBRACKET  (40)
 
+	RBRACKET  shift 94
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1622,14 +1684,13 @@ state 78
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	PIPE  shift 94
 	.  error
 
 
 state 79
-	expr : LBRACE expr PIPE ID . IN expr set_build_ext_cond RBRACE  (41)
+	expr : LBRACE expr PIPE expr_list_ne . RBRACE  (41)
 
-	IN  shift 95
+	RBRACE  shift 95
 	.  error
 
 
@@ -1646,8 +1707,10 @@ state 80
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	expr_list : expr_list COMMA expr .  (55)
+	expr : expr . IN expr  (35)
+	expr_list : expr_list COMMA expr .  (56)
 
+	IN  shift 37
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1660,8 +1723,8 @@ state 80
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	RBRACE  reduce 55
-	COMMA  reduce 55
+	RBRACE  reduce 56
+	COMMA  reduce 56
 
 
 state 81
@@ -1752,8 +1815,11 @@ state 90
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
-	mid_inter_string : mid_inter_string MIDINTERSTRING expr .  (52)
+	expr : expr . IN expr  (35)
+	stmt : LET ID EQUAL expr . SEMI  (46)
 
+	IN  shift 37
+	SEMI  shift 102
 	EQ  shift 39
 	NEQ  shift 40
 	LT  shift 41
@@ -1766,17 +1832,50 @@ state 90
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	MIDINTERSTRING  reduce 52
-	ENDINTERSTRING  reduce 52
+	.  error
 
 
 state 91
-	single_or_tuple : LPAREN expr_list_ne RPAREN .  (42)
-	stmt : ID LPAREN expr_list_ne RPAREN . EQUAL func_stmt_list DSEMI  (46)
+	expr : expr . PLUS expr  (22)
+	expr : expr . MINUS expr  (23)
+	expr : expr . TIMES expr  (24)
+	expr : expr . DIVIDE expr  (25)
+	expr : expr . EQ expr  (27)
+	expr : expr . NEQ expr  (28)
+	expr : expr . LT expr  (29)
+	expr : expr . LEQ expr  (30)
+	expr : expr . GT expr  (31)
+	expr : expr . GEQ expr  (32)
+	expr : expr . AND expr  (33)
+	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
+	mid_inter_string : mid_inter_string MIDINTERSTRING expr .  (53)
 
-	EQUAL  shift 102
+	IN  shift 37
+	EQ  shift 39
+	NEQ  shift 40
+	LT  shift 41
+	LEQ  shift 42
+	GT  shift 43
+	GEQ  shift 44
+	AND  shift 45
+	OR  shift 46
+	PLUS  shift 47
+	MINUS  shift 48
+	TIMES  shift 49
+	DIVIDE  shift 50
+	MIDINTERSTRING  reduce 53
+	ENDINTERSTRING  reduce 53
+
+
+state 92
+	single_or_tuple : LPAREN expr_list_ne RPAREN .  (42)
+	stmt : ID LPAREN expr_list_ne RPAREN . EQUAL func_stmt_list END  (47)
+
+	EQUAL  shift 103
+	IN  reduce 42
 	SEMI  reduce 42
-	DSEMI  reduce 42
+	END  reduce 42
 	EQ  reduce 42
 	NEQ  reduce 42
 	LT  reduce 42
@@ -1791,65 +1890,29 @@ state 91
 	DIVIDE  reduce 42
 
 
-state 92
+state 93
 	stmt : ID EQUAL expr SEMI .  (44)
 
 	.  reduce 44
 
 
-state 93
-	expr : LBRACKET expr_list_ne ELLIPSE expr RBRACKET .  (39)
-
-	.  reduce 39
-
-
 state 94
-	expr : LBRACE ID IN expr PIPE . expr set_build_ext_cond RBRACE  (40)
+	expr : LBRACKET expr_list_ne ELLIPSE expr RBRACKET .  (40)
 
-	LBRACKET  shift 5
-	LPAREN  shift 6
-	LBRACE  shift 7
-	MINUS  shift 9
-	LITERAL  shift 10
-	REALLIT  shift 11
-	CHARLIT  shift 12
-	BOOLLIT  shift 13
-	STRINGLIT  shift 14
-	BEGINTERSTRING  shift 15
-	ID  shift 22
-	.  error
-
-	expr  goto 103
-	string_lit  goto 19
-	single_or_tuple  goto 20
+	.  reduce 40
 
 
 state 95
-	expr : LBRACE expr PIPE ID IN . expr set_build_ext_cond RBRACE  (41)
+	expr : LBRACE expr PIPE expr_list_ne RBRACE .  (41)
 
-	LBRACKET  shift 5
-	LPAREN  shift 6
-	LBRACE  shift 7
-	MINUS  shift 9
-	LITERAL  shift 10
-	REALLIT  shift 11
-	CHARLIT  shift 12
-	BOOLLIT  shift 13
-	STRINGLIT  shift 14
-	BEGINTERSTRING  shift 15
-	ID  shift 22
-	.  error
-
-	expr  goto 104
-	string_lit  goto 19
-	single_or_tuple  goto 20
+	.  reduce 41
 
 
 state 96
 	simple_typ : LPAREN typ . RPAREN  (9)
 	typ : typ . ARROW typ  (13)
 
-	RPAREN  shift 105
+	RPAREN  shift 104
 	ARROW  shift 101
 	.  error
 
@@ -1877,8 +1940,8 @@ state 99
 	STRING  shift 86
 	.  error
 
-	simple_typ  goto 106
-	typ_list  goto 107
+	simple_typ  goto 105
+	typ_list  goto 106
 
 
 state 100
@@ -1899,95 +1962,33 @@ state 101
 	.  error
 
 	simple_typ  goto 87
-	typ  goto 108
+	typ  goto 107
 	simple_typ_or_tuple  goto 89
 
 
 state 102
-	stmt : ID LPAREN expr_list_ne RPAREN EQUAL . func_stmt_list DSEMI  (46)
-	stmt_list : .  (47)
+	stmt : LET ID EQUAL expr SEMI .  (46)
 
-	.  reduce 47
-
-	stmt_list  goto 109
-	func_stmt_list  goto 110
+	.  reduce 46
 
 
 state 103
-	expr : expr . PLUS expr  (22)
-	expr : expr . MINUS expr  (23)
-	expr : expr . TIMES expr  (24)
-	expr : expr . DIVIDE expr  (25)
-	expr : expr . EQ expr  (27)
-	expr : expr . NEQ expr  (28)
-	expr : expr . LT expr  (29)
-	expr : expr . LEQ expr  (30)
-	expr : expr . GT expr  (31)
-	expr : expr . GEQ expr  (32)
-	expr : expr . AND expr  (33)
-	expr : expr . OR expr  (34)
-	expr : LBRACE ID IN expr PIPE expr . set_build_ext_cond RBRACE  (40)
-	set_build_ext_cond : .  (59)
+	stmt : ID LPAREN expr_list_ne RPAREN EQUAL . func_stmt_list END  (47)
+	stmt_list : .  (48)
 
-	COMMA  shift 111
-	EQ  shift 39
-	NEQ  shift 40
-	LT  shift 41
-	LEQ  shift 42
-	GT  shift 43
-	GEQ  shift 44
-	AND  shift 45
-	OR  shift 46
-	PLUS  shift 47
-	MINUS  shift 48
-	TIMES  shift 49
-	DIVIDE  shift 50
-	RBRACE  reduce 59
+	.  reduce 48
 
-	set_build_ext_cond  goto 112
+	stmt_list  goto 108
+	func_stmt_list  goto 109
 
 
 state 104
-	expr : expr . PLUS expr  (22)
-	expr : expr . MINUS expr  (23)
-	expr : expr . TIMES expr  (24)
-	expr : expr . DIVIDE expr  (25)
-	expr : expr . EQ expr  (27)
-	expr : expr . NEQ expr  (28)
-	expr : expr . LT expr  (29)
-	expr : expr . LEQ expr  (30)
-	expr : expr . GT expr  (31)
-	expr : expr . GEQ expr  (32)
-	expr : expr . AND expr  (33)
-	expr : expr . OR expr  (34)
-	expr : LBRACE expr PIPE ID IN expr . set_build_ext_cond RBRACE  (41)
-	set_build_ext_cond : .  (59)
-
-	COMMA  shift 111
-	EQ  shift 39
-	NEQ  shift 40
-	LT  shift 41
-	LEQ  shift 42
-	GT  shift 43
-	GEQ  shift 44
-	AND  shift 45
-	OR  shift 46
-	PLUS  shift 47
-	MINUS  shift 48
-	TIMES  shift 49
-	DIVIDE  shift 50
-	RBRACE  reduce 59
-
-	set_build_ext_cond  goto 113
-
-
-state 105
 	simple_typ : LPAREN typ RPAREN .  (9)
 
 	.  reduce 9
 
 
-state 106
+state 105
 	simple_typ : simple_typ . SET  (7)
 	simple_typ : simple_typ . ARRAY  (8)
 	typ_list : simple_typ .  (14)
@@ -2000,26 +2001,26 @@ state 106
 	TIMES  reduce 14
 
 
-state 107
+state 106
 	simple_typ_or_tuple : simple_typ TIMES typ_list .  (11)
 	typ_list : typ_list . TIMES simple_typ  (15)
 
-	TIMES  shift 114
+	TIMES  shift 110
 	RPAREN  reduce 11
 	SEMI  reduce 11
 	ARROW  reduce 11
 
 
-state 108
+state 107
 	typ : typ . ARROW typ  (13)
 	typ : typ ARROW typ .  (13)
 
 	.  reduce 13
 
 
-state 109
-	stmt_list : stmt_list . stmt  (48)
-	func_stmt_list : stmt_list . expr  (58)
+state 108
+	stmt_list : stmt_list . stmt  (49)
+	func_stmt_list : stmt_list . expr  (59)
 
 	LBRACKET  shift 5
 	LPAREN  shift 6
@@ -2035,58 +2036,20 @@ state 109
 	ID  shift 16
 	.  error
 
-	expr  goto 115
+	expr  goto 111
 	string_lit  goto 19
 	single_or_tuple  goto 20
 	stmt  goto 21
 
 
+state 109
+	stmt : ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list . END  (47)
+
+	END  shift 112
+	.  error
+
+
 state 110
-	stmt : ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list . DSEMI  (46)
-
-	DSEMI  shift 116
-	.  error
-
-
-state 111
-	set_build_ext_cond : COMMA . expr_list_ne  (60)
-	expr_list : .  (53)
-
-	LBRACKET  shift 5
-	LPAREN  shift 6
-	LBRACE  shift 7
-	MINUS  shift 9
-	LITERAL  shift 10
-	REALLIT  shift 11
-	CHARLIT  shift 12
-	BOOLLIT  shift 13
-	STRINGLIT  shift 14
-	BEGINTERSTRING  shift 15
-	ID  shift 22
-	COMMA  reduce 53
-
-	expr  goto 23
-	string_lit  goto 19
-	single_or_tuple  goto 20
-	expr_list  goto 26
-	expr_list_ne  goto 117
-
-
-state 112
-	expr : LBRACE ID IN expr PIPE expr set_build_ext_cond . RBRACE  (40)
-
-	RBRACE  shift 118
-	.  error
-
-
-state 113
-	expr : LBRACE expr PIPE ID IN expr set_build_ext_cond . RBRACE  (41)
-
-	RBRACE  shift 119
-	.  error
-
-
-state 114
 	typ_list : typ_list TIMES . simple_typ  (15)
 
 	LPAREN  shift 81
@@ -2097,10 +2060,10 @@ state 114
 	STRING  shift 86
 	.  error
 
-	simple_typ  goto 120
+	simple_typ  goto 113
 
 
-state 115
+state 111
 	expr : expr . PLUS expr  (22)
 	expr : expr . MINUS expr  (23)
 	expr : expr . TIMES expr  (24)
@@ -2113,9 +2076,11 @@ state 115
 	expr : expr . GEQ expr  (32)
 	expr : expr . AND expr  (33)
 	expr : expr . OR expr  (34)
+	expr : expr . IN expr  (35)
 	stmt : expr . SEMI  (43)
-	func_stmt_list : stmt_list expr .  (58)
+	func_stmt_list : stmt_list expr .  (59)
 
+	IN  shift 37
 	SEMI  shift 38
 	EQ  shift 39
 	NEQ  shift 40
@@ -2129,34 +2094,16 @@ state 115
 	MINUS  shift 48
 	TIMES  shift 49
 	DIVIDE  shift 50
-	DSEMI  reduce 58
+	END  reduce 59
 
 
-state 116
-	stmt : ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI .  (46)
+state 112
+	stmt : ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END .  (47)
 
-	.  reduce 46
-
-
-state 117
-	set_build_ext_cond : COMMA expr_list_ne .  (60)
-
-	.  reduce 60
+	.  reduce 47
 
 
-state 118
-	expr : LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE .  (40)
-
-	.  reduce 40
-
-
-state 119
-	expr : LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE .  (41)
-
-	.  reduce 41
-
-
-state 120
+state 113
 	simple_typ : simple_typ . SET  (7)
 	simple_typ : simple_typ . ARRAY  (8)
 	typ_list : typ_list TIMES simple_typ .  (15)
@@ -2169,5 +2116,5 @@ state 120
 	TIMES  reduce 15
 
 
-49 terminals, 17 nonterminals
-62 grammar rules, 121 states
+50 terminals, 16 nonterminals
+61 grammar rules, 114 states
