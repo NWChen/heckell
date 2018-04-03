@@ -112,11 +112,11 @@ expr:
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
-| LBRACKET expr_list_ne ELLIPSE expr RBRACKET 
+| LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
       | [e1; e2] -> ArrayRange(e1, Some e2, $4)
-      | _ -> raise (Failure("Too many arguments for ArrayRange"))
+      | _ -> raise (Failure("Incompatible arguments for ArrayRange"))
     }
 /* TODO: Allow for set of tuples */
 | LBRACE expr PIPE expr_list_ne RBRACE   
