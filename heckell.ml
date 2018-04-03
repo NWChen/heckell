@@ -24,8 +24,11 @@ let () =
     match !action with
     | Ast -> ()
     | Sast -> print_string (Pprinting.string_of_sprogram sast)
-    | _ -> ()
-  (* let lexbuf = Lexing.from_channel stdin in
+    | LLVM_IR -> print_string (Llvm.string_of_llmodule (Codegen.translate sast))
+    | Compile -> let m = Codegen.translate sast in
+  Llvm_analysis.assert_valid_module m;
+  print_string (Llvm.string_of_llmodule m)
+(* let lexbuf = Lexing.from_channel stdin in
   let ast = Parser.program Scanner.tokenize lexbuf in
   let sast = Semant.check ast in
   let m = Codegen.translate sast in

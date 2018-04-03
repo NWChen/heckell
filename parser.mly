@@ -6,7 +6,7 @@
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 
-%token LET IN COLON COMMA SEMI DSEMI ARROW	
+%token LET IN COLON COMMA SEMI DSEMI END ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR STRING
 %token SET 
@@ -14,7 +14,7 @@
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
 %token <int> LITERAL
-%token <string> REALLIT
+%token <float> REALLIT
 %token <char> CHARLIT
 %token <bool> BOOLLIT
 %token <string> STRINGLIT
@@ -28,7 +28,7 @@
 /* TODO: Precedence and associativity */
 /* %nonassoc COLON */
 %right SEMI
-%right DSEMI
+%right DSEMI END
 /*%left LET*/
 %left COMMA
 %right EQUAL
@@ -106,15 +106,15 @@ expr:
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
-| ID LPAREN expr_list_ne RPAREN { FuncCall($1, $3) }
-| LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
+| ID single_or_tuple    { FuncCall($1, $2) }
+| single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
-| LBRACKET expr_list_ne ELLIPSE expr RBRACKET 
+| LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
       | [e1; e2] -> ArrayRange(e1, Some e2, $4)
-      | _ -> raise (Failure("Too many arguments for ArrayRange"))
+      | _ -> raise (Failure("Incompatible arguments for ArrayRange"))
     }
 /* TODO: Allow for set of tuples */
 | LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
@@ -122,28 +122,41 @@ expr:
         (* identity function *)
         None, 
         Iter($2, $4), 
-        FuncDef([Id($2)], [Expr(
+        FuncDef([$2], [Expr(
           List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
         )])
       )}
 | LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
     { SetBuilder(
-        Some(FuncDef([Id($4)], [Expr($2)])), 
+        Some(FuncDef([$4], [Expr($2)])), 
         Iter($4, $6),
-        FuncDef([Id($4)], [Expr(
+        FuncDef([$4], [Expr(
           match (List.rev $7) with
           | [] -> BoolLit(true)
           | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
         )])
       )}
 
+single_or_tuple:
+| LPAREN expr_list_ne RPAREN  { match $2 with 
+                                | [x] -> x
+                                | l -> TupleLit(List.rev l)
+                              }
+
 
 stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list DSEMI
-                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
+| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
+                           { Asn($1, FuncDef(
+                            (let check_id e = 
+                              match e with
+                              | Id(s) -> s
+                              | _ -> raise(Failure("wrong function formals"))
+                            in let formals = List.map check_id $3
+                            in List.rev formals),
+                            List.rev $6)) }
 
 stmt_list:
   /* nothing */  { [] }
@@ -192,7 +205,7 @@ func_stmt_list:
 
 set_build_ext_cond:
   /* nothing */       { [] }
-| COMMA expr_list_ne  { $2 }
+| COMMA expr_list  { $2 }
 
 
 /*formal_opt:

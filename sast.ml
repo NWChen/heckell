@@ -7,15 +7,18 @@ and sx =
   | SBinop of sexpr * op * sexpr
   | SUniop of uop * sexpr
   | SLit of int
-  | SRealLit of string
+  | SRealLit of float
   | SBoolLit of bool
+  | SCharLit of char
+  | SStringLit of string
+  | SInterStringLit of string list * sexpr list
   | STupleLit of sexpr list
   | SSetLit of sexpr list
   | SSetBuilder of sexpr option * sstmt * sexpr
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
-  | SFuncDef of sexpr list * sstmt list (* param ids * function body *)
-  | SFuncCall of string * sexpr list
+  | SFuncDef of string list * sstmt list (* param ids * function body *)
+  | SFuncCall of string * sexpr
 
 and sstmt =
     SAsn of string * sexpr

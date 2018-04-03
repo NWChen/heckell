@@ -1,2 +1,0 @@
-let f: int->int;
-f(y) = y;;

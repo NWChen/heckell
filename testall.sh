@@ -1,6 +1,15 @@
 #!/bin/bash
 
-HECKELL="./heckell -a"
+HECKELL="./heckell"
+
+# Path to the LLVM interpreter
+LLI="lli"
+
+# Path to the LLVM compiler
+LLC="llc"
+
+# Path to the C compiler
+CC="cc"
 
 # Set time limit for all operations
 ulimit -t 30
@@ -13,7 +22,7 @@ Compare() {
 	fi
 }
 
-files="tests/test-*.hck tests/fail-*.hck"
+files="tests/test-*.hck"
 
 for file in $files
 do
@@ -21,20 +30,20 @@ do
                          		s/.hck//'`
 	echo -n "$basename..."
 
+    $HECKELL $file > "tests/${basename}.ll"
+    $LLC "tests/${basename}.ll" > "tests/${basename}.s"
+    $CC -o "tests/${basename}.exe" "tests/${basename}.s"
+    "./tests/${basename}.exe" > "tests/${basename}.diff"
+
     case $file in
 	*test-*)
-	    $HECKELL < $file &> "tests/${basename}.diff"
 	    Compare tests/${basename}.diff tests/${basename}.out
-	    ;;
-	*fail-*)
-	    $HECKELL < $file &> "tests/${basename}.diff"
-	    Compare tests/${basename}.diff tests/${basename}.err
 	    ;;
 	*)
 	    echo "unknown file type $file"
     esac
 
     # Remove generated file
-    rm -f tests/${basename}.diff
+    rm -f tests/${basename}.diff tests/${basename}.ll tests/${basename}.exe tests/${basename}.s
 
 done
