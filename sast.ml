@@ -3,7 +3,7 @@ open Ast
 type sexpr = typ * sx (* sx is the same as `expr_detail` from lecture notes *)
 
 and sx =
-    SId of string
+  | SId of string
   | SBinop of sexpr * op * sexpr
   | SUniop of uop * sexpr
   | SLit of int
@@ -17,13 +17,13 @@ and sx =
   | SSetBuilder of sexpr option * sstmt * sexpr
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
-  | SFuncDef of string list * sstmt list (* param ids * function body *)
+  | SFuncDef of sstmt list * sstmt list (* formals to decl * function body *)
   | SFuncCall of string * sexpr
 
 and sstmt =
-    SAsn of string * sexpr
+  | SAsn of string * sexpr
   | SDecl of string * typ
   | SExpr of sexpr
-  | SIter of string * sexpr
+  | SIter of sstmt list * sexpr (* decl list * set *)
 
 type sprogram = sstmt list
