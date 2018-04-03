@@ -73,6 +73,9 @@ let check stmts =
       | Less | Leq | Greater | Geq
                  when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
       | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
+      | Member -> ( match t2 with 
+        | Set(set_t) when set_t = t1 -> PrimTyp(Bool)
+        | _ -> raise(Failure("membership operand needs to be set type")) )
       | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
       in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
     | Uniop (op, e) ->
