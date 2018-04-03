@@ -72,9 +72,9 @@ let translate (statement_list) =
         | _ -> to_imp "")
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
-        and e1' = expr builder e1
-        and e2' = expr builder e2 in
-        if t = A.Float then (match op with 
+        and e1' = exprb builder e1
+        and e2' = exprb builder e2 in
+        if t = A.PrimTyp(A.Real) then (match op with 
           A.Add     -> L.build_fadd
         | A.Sub     -> L.build_fsub
         | A.Mul     -> L.build_fmul
@@ -102,11 +102,10 @@ let translate (statement_list) =
         | A.Geq     -> L.build_icmp L.Icmp.Sge
         ) e1' e2' "tmp" builder
       | SUniop(op, e) ->
-        let (t, _) = e and e' = expr builder e in
+        let (t, _) = e and e' = exprb builder e in
         (match op with
-          A.Neg when t = A.Float -> L.build_fneg 
-        | A.Neg                  -> L.build_neg
-        | A.Not                  -> raise to_imp "A.not"
+          A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
+        | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
     in match fdecl with
     | SExpr e -> ignore(exprb builder e)
