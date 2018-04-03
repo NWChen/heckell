@@ -60,19 +60,54 @@ let translate (statement_list) =
 
   (* Generate the instructions for a trivial "main" function *)
   let build_function fdecl =
-    (* Generate LLVM code for a call to Heckell's "print" *)
     let rec exprb builder (_, e) = match e with
-        SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+        SLit i -> L.const_int i32_t i
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
+      | SFuncCall ("print", (se_t, se)) -> ( match se_t with
         | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
           "printf" builder
         | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
           "printf" builder
         | _ -> to_imp "")
-      (* Throw an error for any other expressions *)
-      | _ -> to_imp ""
+      | SBinop (e1, op, e2) ->
+        let (t, _) = e1
+        and e1' = expr builder e1
+        and e2' = expr builder e2 in
+        if t = A.Float then (match op with 
+          A.Add     -> L.build_fadd
+        | A.Sub     -> L.build_fsub
+        | A.Mul     -> L.build_fmul
+        | A.Div     -> L.build_fdiv 
+        | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+        | A.Neq     -> L.build_fcmp L.Fcmp.One
+        | A.Less    -> L.build_fcmp L.Fcmp.Olt
+        | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+        | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+        | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+        | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
+        ) e1' e2' "tmp" builder 
+        else (match op with
+        | A.Add     -> L.build_add
+        | A.Sub     -> L.build_sub
+        | A.Mul     -> L.build_mul
+        | A.Div     -> L.build_sdiv
+        | A.And     -> L.build_and
+        | A.Or      -> L.build_or
+        | A.Equal   -> L.build_icmp L.Icmp.Eq
+        | A.Neq     -> L.build_icmp L.Icmp.Ne
+        | A.Less    -> L.build_icmp L.Icmp.Slt
+        | A.Leq     -> L.build_icmp L.Icmp.Sle
+        | A.Greater -> L.build_icmp L.Icmp.Sgt
+        | A.Geq     -> L.build_icmp L.Icmp.Sge
+        ) e1' e2' "tmp" builder
+      | SUniop(op, e) ->
+        let (t, _) = e and e' = expr builder e in
+        (match op with
+          A.Neg when t = A.Float -> L.build_fneg 
+        | A.Neg                  -> L.build_neg
+        | A.Not                  -> raise to_imp "A.not"
+        ) e' "tmp" builder
     in match fdecl with
     | SExpr e -> ignore(exprb builder e)
     | _ -> ()
