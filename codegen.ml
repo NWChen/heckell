@@ -60,36 +60,56 @@ let translate (statement_list) =
 
   (* Generate the instructions for a trivial "main" function *)
   let build_function fdecl =
-    (* Generate LLVM code for a call to Heckell's "print" *)
-    (*let rec exprb builder ((_, e) : sexpr) = print_endline "exprb"; match e with*)
     let rec exprb builder (_, e) = match e with
-        SLit i -> L.const_int i32_t i (* Generate a constant integer *)
-      | SStringLit s -> (* L.const_stringz context s *)
+        SLit i -> L.const_int i32_t i
+      | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
+      | SFuncCall ("print", (se_t, se)) -> ( match se_t with
         | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder(* ; L.build_ret (exprb builder (se_t, se)) builder  *)
+          "printf" builder
         | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder(* ; L.build_ret (L.const_int i32_t 0) builder  *)
+          "printf" builder
         | _ -> to_imp "")
-      (* Throw an error for any other expressions *)
-      | _ -> to_imp ""
-    (*let builder = exprb builder fdecl in*)
-    (*in let _ = exprb builder fdecl in ()*)
+      | SBinop (e1, op, e2) ->
+        let (t, _) = e1
+        and e1' = exprb builder e1
+        and e2' = exprb builder e2 in
+        if t = A.PrimTyp(A.Real) then (match op with 
+          A.Add     -> L.build_fadd
+        | A.Sub     -> L.build_fsub
+        | A.Mul     -> L.build_fmul
+        | A.Div     -> L.build_fdiv 
+        | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+        | A.Neq     -> L.build_fcmp L.Fcmp.One
+        | A.Less    -> L.build_fcmp L.Fcmp.Olt
+        | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+        | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+        | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+        | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
+        ) e1' e2' "tmp" builder 
+        else (match op with
+        | A.Add     -> L.build_add
+        | A.Sub     -> L.build_sub
+        | A.Mul     -> L.build_mul
+        | A.Div     -> L.build_sdiv
+        | A.And     -> L.build_and
+        | A.Or      -> L.build_or
+        | A.Equal   -> L.build_icmp L.Icmp.Eq
+        | A.Neq     -> L.build_icmp L.Icmp.Ne
+        | A.Less    -> L.build_icmp L.Icmp.Slt
+        | A.Leq     -> L.build_icmp L.Icmp.Sle
+        | A.Greater -> L.build_icmp L.Icmp.Sgt
+        | A.Geq     -> L.build_icmp L.Icmp.Sge
+        ) e1' e2' "tmp" builder
+      | SUniop(op, e) ->
+        let (t, _) = e and e' = exprb builder e in
+        (match op with
+          A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
+        | A.Neg                            -> L.build_neg
+        ) e' "tmp" builder
     in match fdecl with
     | SExpr e -> ignore(exprb builder e)
     | _ -> ()
 
-    (*in exprb builder fdecl*)
-    (* Deal with a block of expression statements, terminated by a return *)
-(*     let rec stmt builder = function
-        SBlock sl -> List.fold_left stmt builder sl
-      | SExpr e -> let _ = expr builder e in builder 
-      | s -> to_imp (string_of_sstmt s) *)
-    (* Generate the instructions for the function's body, 
-       which mutates the_module *)
-    (* in ignore(stmt builder (SBlock fdecl.sbody)) *)
-  (* Build each function (there should only be one for Hello World), 
-     and return the final module *)
   in List.iter build_function statement_list; L.build_ret (L.const_int i32_t 0) builder;
   the_module

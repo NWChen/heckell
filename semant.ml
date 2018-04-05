@@ -89,16 +89,9 @@ let check stmts =
     | InterStringLit (sl, el) -> 
       (String, SInterStringLit (sl, List.map (fun ex -> expr ex scope) el))
     | TupleLit t -> 
-(*<<<<<<< HEAD
-      let sexpr_list = List.map (fun ex -> expr ex map) t in
-      (match sexpr_list with
-      | [x] -> x
-      | _ -> ( Tuple (List.map fst sexpr_list), STupleLit (sexpr_list) ) )
-=======*)
       let sexpr_list = List.map (fun ex -> expr ex scope) t in
       ( Tuple (List.map fst sexpr_list), 
         STupleLit (sexpr_list) )
-(*>>>>>>> more-semant*)
     | SetLit l -> 
       let set_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
@@ -121,7 +114,6 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
-    (* | FuncDef(el, sl) ->  *)
     | FuncCall(var, e) -> 
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)
@@ -148,19 +140,10 @@ let check stmts =
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
-  in 
-(*<<<<<<< HEAD*)
-  let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
-  in 
-  (*let symbols = check_stmt stmts symbols_init*)
-(*=======
-  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in*)
-  let g_scope = {symb = symbols_init; parent = None} in 
-  let symbols = check_stmt stmts g_scope
-(*>>>>>>> more-semant*)
-  (* gather sstmt list *)
-  in 
-  let append_sstmt stmt =
+  in let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
+  in let g_scope = {symb = symbols_init; parent = None}
+  in let symbols = check_stmt stmts g_scope
+  in let append_sstmt stmt =
     match stmt with
     | Expr e -> SExpr (expr e symbols)
     | Asn(var, e) -> SAsn(var, expr e symbols)
