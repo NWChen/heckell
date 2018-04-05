@@ -63,6 +63,12 @@ hset *insert_val(char *val_ts, void *val_p, hset *hash_set) {
 	return new_hset;
 }
 
+void destroy_hset(hset *hash_set) {
+	hdestroy_r(&hash_set->values);
+	free(hash_set);
+	hash_set = NULL;
+}
+
 int main(){
 	return 0;
 }
