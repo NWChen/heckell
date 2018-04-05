@@ -40,6 +40,7 @@
 %left AND
 %left EQ NEQ
 %left LT GT LEQ GEQ
+%left IN
 %left PLUS MINUS
 %left TIMES DIVIDE
 %right NEG
@@ -106,6 +107,7 @@ expr:
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
+| expr IN     expr      { Binop($1, Member, $3) }
 | ID single_or_tuple    { FuncCall($1, $2) }
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
@@ -117,25 +119,41 @@ expr:
       | _ -> raise (Failure("Incompatible arguments for ArrayRange"))
     }
 /* TODO: Allow for set of tuples */
-| LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
-    { SetBuilder(
-        (* identity function *)
-        None, 
-        Iter($2, $4), 
-        FuncDef([$2], [Expr(
-          List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
-        )])
-      )}
-| LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
-    { SetBuilder(
-        Some(FuncDef([$4], [Expr($2)])), 
-        Iter($4, $6),
-        FuncDef([$4], [Expr(
-          match (List.rev $7) with
-          | [] -> BoolLit(true)
-          | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
-        )])
-      )}
+| LBRACE expr PIPE expr_list_ne RBRACE   
+    {
+      let rec to_ids = function
+        | h::t -> (
+          match h with
+          | Id(s) -> s::(to_ids t)
+          | _ -> raise(Failure("an iterator must take an id")) )
+        | [] -> []
+      in match $4 with 
+        | [] -> raise(Failure("at least one condition needed")) 
+        | _ -> let builder_conds = List.rev $4
+      in match $2 with
+        | Binop(x, Member, set) -> (* iter | expr *)
+          let elem = match x with
+            | Id(s) -> [s]
+            | TupleLit(l) -> to_ids l
+            | _ -> raise(Failure("an iterator only takes ids"))
+          in SetBuilder(
+            None, Iter(elem, set),
+            List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (List.hd builder_conds) (List.tl builder_conds)
+            )
+        | ex -> ( (* expr | iter *)
+          match (List.hd builder_conds) with
+          | Binop(x, Member, set) -> (
+            let elem = match x with
+              | Id(s) -> [s]
+              | TupleLit(l) -> to_ids l
+              | _ -> raise(Failure("an iterator only takes ids"))
+            in let cond = match (List.tl builder_conds) with
+              | [] -> BoolLit(true)
+              | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
+            in SetBuilder(Some ex, Iter(elem, set), cond) )
+          | _ -> raise(Failure("iterator expected")) )
+    }
+  
 
 single_or_tuple:
 | LPAREN expr_list_ne RPAREN  { match $2 with 
@@ -148,8 +166,9 @@ stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
+| LET ID EQUAL expr SEMI   { AsnDecl($2, $4) }
 | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
-                           { Asn($1, FuncDef(
+                           { Asn($1, FuncDefNamed($1, 
                             (let check_id e = 
                               match e with
                               | Id(s) -> s
@@ -203,9 +222,6 @@ expr_list_ne:
 func_stmt_list:
 | stmt_list expr  { Expr($2) :: $1 }
 
-set_build_ext_cond:
-  /* nothing */       { [] }
-| COMMA expr_list  { $2 }
 
 
 /*formal_opt:

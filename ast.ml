@@ -1,6 +1,7 @@
 type op = 
   Add | Sub | Mul | Div | Equal | Neq 
 | Less | Leq | Greater | Geq | And | Or
+| Member
 
 type uop = Neg
 
@@ -16,7 +17,7 @@ type typ =
   | PrimTyp of prim_typ
 
 type expr =
-    Id of string
+  | Id of string
   | Binop of expr * op * expr
   | Uniop of uop * expr
   | Lit of int
@@ -31,15 +32,16 @@ type expr =
   | ArrayRange of expr * expr option * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
-  | FuncDef of string list * stmt list (* param ids * function body *)
+  | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)
   | FuncCall of string * expr
   (* | Seq of expr * expr  *)
 
 and stmt =
-    Asn of string * expr
+  | Asn of string * expr
   | Decl of string * typ
+  | AsnDecl of string * expr
   | Expr of expr
-  | Iter of string * expr
+  | Iter of string list * expr
 
 type program = stmt list
 (* TODO: op for `(...)` (PARAMS) *)
