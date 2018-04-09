@@ -108,8 +108,12 @@ let translate (statement_list) =
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
     in match fdecl with
-    | SExpr e -> ignore(exprb builder e)
-    | _ -> ()
+    | SExpr e -> (exprb builder e)
+    | _ -> (L.const_int i32_t 0)
 
-  in List.iter build_function statement_list; L.build_ret (L.const_int i32_t 0) builder;
+  (*in let output = *)
+  (*in let output = List.fold_left build_function [] statement_list*)
+  in let output = build_function (List.hd statement_list)
+  in L.build_ret output builder;
+  (*in L.build_ret (L.const_int i32_t output) builder;*)
   the_module
