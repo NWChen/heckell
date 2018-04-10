@@ -100,7 +100,7 @@ let translate (stmt_list) =
         A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
       | A.Neg                            -> L.build_neg
       ) e' "tmp" builder
-    | _ -> to_imp ""
+    | _ -> to_imp "" (* TODO: implemnet variable reference *)
 
   (* Handle a declaration *)
   in let decl m d = match d with
