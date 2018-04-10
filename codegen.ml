@@ -22,7 +22,7 @@ module StringMap = Map.Make(String)
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
-let translate (statement_list) =
+let translate (stmt_list) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type       context in
@@ -71,19 +71,19 @@ let translate (statement_list) =
     | _ -> to_imp ""
 
   (* Handle a declaration *)
-  in let decl builder (n, t) m =
-    let addr = L.build_alloca (ltype_of_typ t) n builder
-    in StringMap.add n addr m
+  (*in let decl m (n, t) =*)
+  in let decl m d = match d with
+    | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
+                in StringMap.add n addr m
 
   (* Handle an assignment *)
-  in let asn builder (n, sexpr) m =
-    let addr = StringMap.find n m
-    in L.build_store (expr builder sexpr) addr builder
-
-  (* TODO *)
+  (*in let asn m (n, sexpr) =*)
+  in let asn m a = match a with
+    | SAsn (n, sexpr) -> let addr = StringMap.find n m
+                in ignore(L.build_store (expr builder sexpr) addr builder) (* TODO: should this really be ignored? *)
 
   (* Generate the instructions for a trivial "main" function *)
-  let build_function stmts =
+  in let build_function stmt =
 
     (* 
      * Construct locals in `main` - for all (locally declared) variables,
@@ -91,13 +91,6 @@ let translate (statement_list) =
      * 2. Initialize value
      * 3. Remember their values in `locals` map
     *)
-    
-    (*
-    let add_local m (t, n) =
-      let local_var = L.build_alloca (ltype_of_typ t) n builder
-      in StringMap.add n local_var m
-    *)
-
     let rec expr builder (_, e) = match e with
       | SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SStringLit s -> 
@@ -116,7 +109,7 @@ let translate (statement_list) =
 
   (* TODO 100 was here *)
 
-  (* Filter all `SDecl`s, `SAsn`s, etc. from `statement_list` for preprocessing *)
+  (* Filter all `SDecl`s, `SAsn`s, etc. from `stmt_list` for preprocessing *)
   in let is_decl stmt = match stmt with
     | SDecl (n, t) -> true
     | _ -> false
@@ -125,11 +118,11 @@ let translate (statement_list) =
     | _ -> false
 
   (* Handle all declaration (SDecl) statements. *)
-  in let decls = List.fold_left decl StringMap.empty (List.filter is_decl statement_list)
+  in let decls = List.fold_left decl StringMap.empty (List.filter is_decl stmt_list)
   (* Handle all declaration (SDecl) statements. *)
 
-  in let () = List.iter (assign decls) (List.filter is_asn statement_list) (* Handle all assignment (SAsn) statements. *)
+  in let () = List.iter (fun stmt -> asn decls stmt) (List.filter is_asn stmt_list) (* Handle all assignment (SAsn) statements. *)
 
-  in List.iter (build_function locals) statement_list; 
+  in List.iter build_function stmt_list; 
   L.build_ret (L.const_int i32_t 0) builder;
   the_module
