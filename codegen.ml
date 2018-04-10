@@ -58,8 +58,32 @@ let translate (statement_list) =
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder
   in
 
+  (* Evaluate an expr *)
+  let rec expr builder (_, e) = match e with
+    | SLit i -> L.const_int i32_t i
+    | SStringLit s -> L.build_global_stringptr s ".str" builder
+    | SFuncCall ("print", (se_t, se)) -> ( match se_t with
+      | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (expr builder (se_t, se)) |]
+        "printf" builder
+      | A.String -> L.build_call printf_func [| str_format_str ; (expr builder (se_t, se)) |]
+        "printf" builder
+      | _ -> to_imp "" )
+    | _ -> to_imp ""
+
+  (* Handle a declaration *)
+  in let decl builder (n, t) m =
+    let addr = L.build_alloca (ltype_of_typ t) n builder
+    in StringMap.add n addr m
+
+  (* Handle an assignment *)
+  in let asn builder (n, sexpr) m =
+    let addr = StringMap.find n m
+    in L.build_store (expr builder sexpr) addr builder
+
+  (* TODO *)
+
   (* Generate the instructions for a trivial "main" function *)
-  let build_function locals stmt =
+  let build_function stmts =
 
     (* 
      * Construct locals in `main` - for all (locally declared) variables,
@@ -67,40 +91,45 @@ let translate (statement_list) =
      * 2. Initialize value
      * 3. Remember their values in `locals` map
     *)
-
+    
+    (*
     let add_local m (t, n) =
       let local_var = L.build_alloca (ltype_of_typ t) n builder
       in StringMap.add n local_var m
+    *)
 
-    in let rec exprb builder (_, e) = match e with
-        SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+    let rec expr builder (_, e) = match e with
+      | SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
-        | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
+        | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (expr builder (se_t, se)) |]
           "printf" builder
-        | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
+        | A.String -> L.build_call printf_func [| str_format_str ; (expr builder (se_t, se)) |]
           "printf" builder
         | _ -> to_imp "")
       (* Throw an error for any other expressions *)
       | _ -> to_imp ""
     in match stmt with
-    | SExpr e -> ignore(exprb builder e)
+    | SExpr e -> ignore(expr builder e)
     | _ -> ()
 
   (* TODO 100 was here *)
 
-  (* Filter all `SDecl`s, `SAsn`s, etc. from `statement_list`. *)
+  (* Filter all `SDecl`s, `SAsn`s, etc. from `statement_list` for preprocessing *)
   in let is_decl stmt = match stmt with
     | SDecl (n, t) -> true
     | _ -> false
   in let is_asn stmt = match stmt with
     | SAsn (n, e) -> true
     | _ -> false
-  in let assign m (n, e) = L.build_store (exprb builder e) (lookup n) builder
 
-  in let locals = List.fold_left add_local StringMap.empty (List.filter is_decl statement_list)
-  in let () = List.iter (assign locals) (List.filter is_asn statement_list) (* Handle all assignment (SAsn) statements. *)
+  (* Handle all declaration (SDecl) statements. *)
+  in let decls = List.fold_left decl StringMap.empty (List.filter is_decl statement_list)
+  (* Handle all declaration (SDecl) statements. *)
+
+  in let () = List.iter (assign decls) (List.filter is_asn statement_list) (* Handle all assignment (SAsn) statements. *)
+
   in List.iter (build_function locals) statement_list; 
   L.build_ret (L.const_int i32_t 0) builder;
   the_module
