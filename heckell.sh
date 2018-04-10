@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ]; then
   exit 1 
 fi
 
-/heckell < $1 | cat > temp.ll
+./heckell < $1 | cat > temp.ll
 llc temp.ll > temp.s
 cc -o temp.exe temp.s
 ./temp.exe
