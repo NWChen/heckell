@@ -1,1 +1,1 @@
-print("~heckell~");
+print_string("~heckell~");

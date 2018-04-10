@@ -35,7 +35,7 @@ let translate (stmt_list) =
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
       A.PrimTyp(A.Int) -> i32_t
-    | A.String       -> str_t
+    | A.String         -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -56,58 +56,66 @@ let translate (stmt_list) =
   (* Create a pointer to a format string for printf *)
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder
-  in
 
-  (* Evaluate an expr *)
-  let rec expr builder (_, e) = match e with
-    | SLit i -> L.const_int i32_t i
-    | SStringLit s -> L.build_global_stringptr s ".str" builder
-    | SFuncCall ("print", (se_t, se)) -> ( match se_t with
-      | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (expr builder (se_t, se)) |]
-        "printf" builder
-      | A.String -> L.build_call printf_func [| str_format_str ; (expr builder (se_t, se)) |]
-        "printf" builder
-      | _ -> to_imp "" )
+  in let rec expr builder (_, e) = match e with
+    | SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+    | SStringLit s -> 
+      L.build_global_stringptr s ".str" builder
+    | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+    | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
+    | SBinop (e1, op, e2) ->
+      let (t, _) = e1
+      and e1' = expr builder e1
+      and e2' = expr builder e2 in
+      if t = A.PrimTyp(A.Real) then (match op with 
+        A.Add     -> L.build_fadd
+      | A.Sub     -> L.build_fsub
+      | A.Mul     -> L.build_fmul
+      | A.Div     -> L.build_fdiv 
+      | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+      | A.Neq     -> L.build_fcmp L.Fcmp.One
+      | A.Less    -> L.build_fcmp L.Fcmp.Olt
+      | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+      | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+      | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+      | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
+      ) e1' e2' "tmp" builder 
+      else (match op with
+      | A.Add     -> L.build_add
+      | A.Sub     -> L.build_sub
+      | A.Mul     -> L.build_mul
+      | A.Div     -> L.build_sdiv
+      | A.And     -> L.build_and
+      | A.Or      -> L.build_or
+      | A.Equal   -> L.build_icmp L.Icmp.Eq
+      | A.Neq     -> L.build_icmp L.Icmp.Ne
+      | A.Less    -> L.build_icmp L.Icmp.Slt
+      | A.Leq     -> L.build_icmp L.Icmp.Sle
+      | A.Greater -> L.build_icmp L.Icmp.Sgt
+      | A.Geq     -> L.build_icmp L.Icmp.Sge
+      ) e1' e2' "tmp" builder
+    | SUniop(op, e) ->
+      let (t, _) = e and e' = expr builder e in
+      (match op with
+        A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
+      | A.Neg                            -> L.build_neg
+      ) e' "tmp" builder
     | _ -> to_imp ""
 
   (* Handle a declaration *)
-  (*in let decl m (n, t) =*)
   in let decl m d = match d with
     | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
                 in StringMap.add n addr m
 
   (* Handle an assignment *)
-  (*in let asn m (n, sexpr) =*)
   in let asn m a = match a with
     | SAsn (n, sexpr) -> let addr = StringMap.find n m
                 in ignore(L.build_store (expr builder sexpr) addr builder) (* TODO: should this really be ignored? *)
 
   (* Generate the instructions for a trivial "main" function *)
-  in let build_function stmt =
-
-    (* 
-     * Construct locals in `main` - for all (locally declared) variables,
-     * 1. Allocate each on stack
-     * 2. Initialize value
-     * 3. Remember their values in `locals` map
-    *)
-    let rec expr builder (_, e) = match e with
-      | SLit i -> L.const_int i32_t i (* Generate a constant integer *)
-      | SStringLit s -> 
-        L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
-        | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (expr builder (se_t, se)) |]
-          "printf" builder
-        | A.String -> L.build_call printf_func [| str_format_str ; (expr builder (se_t, se)) |]
-          "printf" builder
-        | _ -> to_imp "")
-      (* Throw an error for any other expressions *)
-      | _ -> to_imp ""
-    in match stmt with
+  in let build_function stmt = match stmt with
     | SExpr e -> ignore(expr builder e)
-    | _ -> ()
-
-  (* TODO 100 was here *)
+    (*| _ -> ()*)
 
   (* Filter all `SDecl`s, `SAsn`s, etc. from `stmt_list` for preprocessing *)
   in let is_decl stmt = match stmt with
@@ -123,6 +131,7 @@ let translate (stmt_list) =
 
   in let () = List.iter (fun stmt -> asn decls stmt) (List.filter is_asn stmt_list) (* Handle all assignment (SAsn) statements. *)
 
-  in List.iter build_function stmt_list; 
-  L.build_ret (L.const_int i32_t 0) builder;
+  in let () = List.iter build_function (List.filter (fun stmt -> ((not (is_decl stmt)) && (not (is_asn stmt)))) stmt_list)
+
+  in ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
