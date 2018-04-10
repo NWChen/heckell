@@ -8,32 +8,6 @@ module StringMap = Map.Make(String)
 
 type scope = {symb: Ast.typ StringMap.t; parent: scope option}
 
-(*
- * WHERE WE LEFT OFF
- * -----------------
- * Our semantic checker `semant.ml` is currently heavily based on the `microc` semantic checker.
- *
- * Our pipeline thus works like this:
-     * read list of globals into a StringMap
-     * build (variable) symbol table
-     * check type match for stmts, pattern matching stmt types Expr, Asn, Decl
- *
- * WHAT TO DO NEXT
- * ---------------
- * microc considers `bind` a type of its own, but heckell considers the equivalent (Decl) of type stmt.
- * So we need to match only on stmt-Decls, and build the symbol table accordingly.
- * Then we may perform semantic checking, evaluating `Asn`s along the way.
- *
- * Our first test case should look something like:
-     * let x:int;
-     * x = 3;
-     * let y:int;
-     * y = 3.0;
-     * and observe the corresponding semantic error.
- * Then we can continue with evaluating the types of stmt-Exprs, etc.
- *)
-
-
 (* 
  * Should check
  * 1) types match
@@ -141,6 +115,9 @@ let check stmts =
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
   in let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
+
+  (* @MARGARET - overload "print" here please *)
+
   in let g_scope = {symb = symbols_init; parent = None}
   in let symbols = check_stmt stmts g_scope
   in let append_sstmt stmt =

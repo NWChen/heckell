@@ -64,10 +64,10 @@ let translate (statement_list) =
         SLit i -> L.const_int i32_t i
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> ( match se_t with
-        | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
+      | SFuncCall ("print", (se_t, se)) -> print_string "print"; ( match se_t with
+        | A.PrimTyp(A.Int) -> print_string "int"; L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
           "printf" builder
-        | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
+        | A.String -> print_string "string"; L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
           "printf" builder
         | _ -> to_imp "")
       | SBinop (e1, op, e2) ->
@@ -108,12 +108,9 @@ let translate (statement_list) =
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
     in match fdecl with
-    | SExpr e -> (exprb builder e)
-    | _ -> (L.const_int i32_t 0)
+    | SExpr e -> ignore(exprb builder e)
+    | _ -> ()
 
-  (*in let output = *)
-  (*in let output = List.fold_left build_function [] statement_list*)
-  in let output = build_function (List.hd statement_list)
-  in L.build_ret output builder;
-  (*in L.build_ret (L.const_int i32_t output) builder;*)
+  in let () = List.iter build_function statement_list
+  in ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
