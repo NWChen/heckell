@@ -35,7 +35,7 @@ let translate (statement_list) =
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
       A.PrimTyp(A.Int) -> i32_t
-    | A.String       -> str_t
+    | A.String         -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -64,12 +64,8 @@ let translate (statement_list) =
         SLit i -> L.const_int i32_t i
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> print_string "print"; ( match se_t with
-        | A.PrimTyp(A.Int) -> print_string "int"; L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder
-        | A.String -> print_string "string"; L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder
-        | _ -> to_imp "")
+      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (exprb builder e) |] "printf" builder
+      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (exprb builder e) |] "printf" builder
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = exprb builder e1

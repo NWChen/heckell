@@ -114,7 +114,8 @@ let check stmts =
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
-  in let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
+  in let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
+  in let symbols_init = StringMap.add "print_string" (Func(String, PrimTyp(Int))) symbols_init
 
   (* @MARGARET - overload "print" here please *)
 
