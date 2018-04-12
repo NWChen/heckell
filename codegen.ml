@@ -119,7 +119,7 @@ let translate (stmt_list) =
                   in let e' = expr builder sexpr 
                   in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
 
-  in let () = List.fold_left build_statements StringMap.empty stmt_list
+  in List.fold_left build_statements StringMap.empty stmt_list;
   (*in List.iter (build_statements StringMap.empty) stmt_list;*)
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
