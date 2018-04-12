@@ -57,13 +57,14 @@ let translate (stmt_list) =
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
-  let lookup n map = try StringMap.find n map
-                     with Not_found -> raise(Failure ("SAADDD not in map"))
+  let global_vars = StringMap.empty in
+  let lookup n  = try StringMap.find n global_vars
+                     with Not_found -> to_imp "SAAADDD"
   in
-  let build_statements var_map stmt = 
+  let build_statements stmt = 
     let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
-      | SId s -> L.build_load (lookup s var_map) s builder
+      | SId s -> L.build_load (lookup s) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
@@ -111,10 +112,10 @@ let translate (stmt_list) =
         | SExpr e -> ignore(expr builder e)
         (* Handle a declaration *)
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in ignore(StringMap.add n addr var_map)
-        | SAsn (n, sexpr) -> let addr = StringMap.find n var_map
+                          in ignore(StringMap.add n addr global_vars)
+        | SAsn (n, sexpr) -> let addr = StringMap.find n global_vars
                   in ignore(L.build_store (expr builder sexpr) addr builder) (* TODO: should this really be ignored? *)
     in stmt_builder builder stmt
-  in List.iter (build_statements StringMap.empty) stmt_list;
+  in List.iter build_statements stmt_list;
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
