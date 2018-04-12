@@ -56,10 +56,14 @@ let translate (stmt_list) =
   (* Create a pointer to a format string for printf *)
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
-  
+
+  let lookup n map = try StringMap.find n map
+                     with Not_found -> raise(Failure ("SAADDD not in map"))
+  in
   let build_statements var_map stmt = 
     let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+      | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
