@@ -164,6 +164,7 @@ let check stmts =
     | [] -> []
   in
   let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
+  let symbols_init = StringMap.add "print_string" (Func(String, PrimTyp(Int))) symbols_init in
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
   in append_sstmt symbols stmts
