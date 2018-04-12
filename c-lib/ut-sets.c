@@ -79,6 +79,7 @@ struct hset_head *del_val(char *val_ts, char *typ, struct hset_head *hash_set) {
 }
 
 void destroy_hset(struct hset_head *hash_set) {
+	struct hset_head *curr, *temp;
 	HASH_ITER(hh, hash_set, curr, temp) {
 		HASH_DEL(hash_set, curr);
 		free(curr->val_p);
