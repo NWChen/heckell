@@ -58,7 +58,7 @@ let translate (stmt_list) =
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
   let lookup n map = try StringMap.find n map
-                     with Not_found -> raise(Failure ("SAADDD not in map"))
+                     with Not_found -> to_imp "ERROR: asn not found."
   in
   let build_statements var_map stmt = 
     let rec expr builder (_, e) = match e with
