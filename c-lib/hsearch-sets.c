@@ -63,6 +63,41 @@ hset *insert_val(char *val_ts, void *val_p, hset *hash_set) {
 	return new_hset;
 }
 
+void *get_val(char *key, hset *hash_set) {
+	ENTRY e, *ep;
+	e.key = key;
+	if (!hsearch_r(e, FIND, &ep, &hash_set->values)) {
+		return NULL;
+	}
+
+	return ep->data;
+}
+
+hset *del_val(char *key, hset *hash_set) {
+	hset *new_hset = init_hset(hash_set->typ);
+	/* 
+	TODO: is this safe? 
+	the pointer values will never be updated
+	what happens when hdestroy 
+	temp solution: wait till end to destroy tables
+	*/
+	memcpy(&new_hset->values, &hash_set->values, sizeof(hash_set->values));
+	void *ret_val = get_val(key, new_hset);
+	printf("initial ret_val: %d\n", *((int *)ret_val));
+
+	ENTRY e, *e_p;
+
+	//TODO: error checking, copying to larger struct
+	if (hsearch_r(e, ENTER, &e_p, &new_hset->values))
+		e_p->data = (void *) NULL;
+	ret_val = get_val(key, new_hset);
+	if (ret_val == NULL)
+		printf("successful delete\n");
+	else
+		printf("new ret_val: %d\n", *(int *)ret_val);	
+  	return new_hset;
+}
+
 void destroy_hset(hset *hash_set) {
 	hdestroy_r(&hash_set->values);
 	free(hash_set);
@@ -70,5 +105,31 @@ void destroy_hset(hset *hash_set) {
 }
 
 int main(){
+	void *ret_val;
+	int four = 4;
+	int eight = 8;
+
+
+	hset *hashset = init_hset("Int");
+	hset *hashset2 = insert_val("4", (void *)&four, hashset);
+	ret_val = get_val("4", hashset2);
+	printf("hset2 val: %d\n", *((int *)ret_val));
+	hset *hashset3 = insert_val("8", (void *)&eight, hashset2);
+	ret_val = get_val("4", hashset3);
+	printf("hset3 val: %d\n", *((int *)ret_val));
+	ret_val = get_val("8", hashset3);
+	printf("hset3 val: %d\n", *((int *)ret_val));
+
+	hset *hashset4 = del_val("4", hashset2);
+	ret_val = get_val("4", hashset2);
+	printf("hset2 val: %d\n", *((int *)ret_val));
+	ret_val = get_val("4", hashset4);
+	if (ret_val)
+		printf("hset4 val: %d\n", *((int *)ret_val));
+	else
+		printf("hset4 val: NULL");
+	//destroy_hset(hashset3);
+
+
 	return 0;
 }
