@@ -78,10 +78,10 @@ let translate (globals, functions) =
        value, if appropriate, and remember their values in the "locals" map *)
     let local_vars =
       let add_formal m (t, n) p = 
-        let () = L.set_value_name n p in
-	let local = L.build_alloca (ltype_of_typ t) n builder in
-        let _  = L.build_store p local builder in
-	StringMap.add n local m 
+        let () = L.set_value_name n p (* END OF FORMALS / START OF LOCALS HERE ? *)
+        in let local = L.build_alloca (ltype_of_typ t) n builder
+        in let _  = L.build_store p local builder
+        in StringMap.add n local m 
       in
 
       (* Allocate space for any locally declared variables and add the
