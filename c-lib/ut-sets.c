@@ -4,6 +4,16 @@
 #include <string.h>
 #include "uthash.h"
 
+/*
+ * [NOTE RE: ut-hash usage]
+ * In order to change the set itself in the ut-hash library,
+ * one would normally have to pass in struct hset_head**
+ * to change the set beyond scope of that function.
+ * However, since Heckell never modifies the set itself,
+ * instead copying the table at the pointer, we can pass in
+ * struct hset_head* and return struct hset_head*.
+ */
+
 struct hset_head {
 	char *val_ts;
 	void *val_p;
@@ -102,12 +112,15 @@ int main() {
 	int ten = 10;
 	struct hset_head *hset1 = init_hset();
 	struct hset_head *hset2 = add_val("4", (void *)&four, "Int", hset1);
+	printf("2: ");
 	print_hset(hset2);
 	struct hset_head *hset3 = add_val("8", (void *)&eight, "Int", hset2);
+	printf("3: ");
+	print_hset(hset3);
 	struct hset_head *hset4 = add_val("10", (void *)&ten, "Int", hset3);
+	printf("4: ");
 	print_hset(hset4);
 	struct hset_head *hset5 = del_val("4", "Int", hset4);
-	print_hset(hset5);
 	destroy_hset(hset1);
 	destroy_hset(hset2);
 	destroy_hset(hset3);
