@@ -47,6 +47,9 @@ let check stmts =
       | Less | Leq | Greater | Geq
                  when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
       | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
+      | Member -> ( match t2 with 
+        | Set(set_t) when set_t = t1 -> PrimTyp(Bool)
+        | _ -> raise(Failure("membership operand needs to be set type")) )
       | _ -> raise (Failure ("illegal binary operator")) (* TODO: full error statement *)
       in (ty, SBinop((t1, e1'), op, ((t2, e2')))) 
     | Uniop (op, e) ->
@@ -77,6 +80,11 @@ let check stmts =
         | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
         | true -> (Set(set_t), SSetLit (sexpr_list))
       )
+    (* | SetBuilder(epot, st, ex) ->
+      match st with
+      | Iter(sl, ex)
+      TODO: make iter into expression parser-wise and choose between iter and member
+       *)
     | ArrayLit l ->
       let arr_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
@@ -88,7 +96,29 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
-    | FuncCall(var, e) -> 
+    | FuncDefNamed(f, al, sl) -> (
+      let func_t = type_of_identifier f scope in
+      match func_t with
+      | Func(in_t, out_t) ->
+        let arg_typs = match in_t with
+          | Tuple(l) -> l
+          | t -> [t]
+        in let arg_decl = 
+          try List.map2 (fun a t -> Decl(a, t)) al arg_typs
+          with Invalid_argument(_) -> raise(Failure("number of arguments mismatch"))
+        in let local_scope = {symb = StringMap.empty; parent = Some scope}
+        in let arg_sdecl = append_sstmt local_scope arg_decl
+        in let local_scope = check_stmt arg_decl local_scope
+        in let _ = check_stmt sl local_scope
+        in let ssl = append_sstmt local_scope sl
+        in let _ = match List.hd (List.rev ssl) with
+          | SExpr(typ, sx) -> 
+            let err = "output type mismatch " ^ string_of_typ out_t ^ " with " ^ string_of_typ typ
+            in check_asn out_t typ err
+          | _ -> raise(Failure("parser shouldn't have returned function not ending with expr"))
+        in (func_t, SFuncDef (arg_sdecl, ssl))
+      | _ -> raise (Failure("non-function type stored")) )
+    | FuncCall(var, e) -> (
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)
       in match typ with
@@ -98,32 +128,42 @@ let check stmts =
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
         in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
-      | _ -> raise (Failure ("non-function type stored")) 
+      | _ -> raise (Failure ("non-function type stored")) )
     | _ -> raise (Failure ("not matched"))
-  in
-  let rec check_stmt to_check symbols = 
+  
+  and check_stmt to_check symbols = 
     match to_check with
     | [] -> symbols
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
       | Asn(var, e) as st ->
-          let left_t = type_of_identifier var symbols
-          and (right_t, e') = expr e symbols in
-          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
-            string_of_typ right_t ^ " in " ^ string_of_stmt st
-          in let _ = check_asn left_t right_t err 
-          in check_stmt tail symbols
+        let left_t = type_of_identifier var symbols
+        and (right_t, e') = expr e symbols in
+        let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+          string_of_typ right_t ^ " in " ^ string_of_stmt st
+        in let _ = check_asn left_t right_t err 
+        in check_stmt tail symbols
+      | AsnDecl(var, e) -> 
+        let (et, se) = expr e symbols in
+        check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
-  in let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty
-  in let symbols_init = StringMap.add "print_string" (Func(String, PrimTyp(Int))) symbols_init
 
-  (* @MARGARET - overload "print" here please *)
-
-  in let g_scope = {symb = symbols_init; parent = None}
-  in let symbols = check_stmt stmts g_scope
-  in let append_sstmt stmt =
-    match stmt with
-    | Expr e -> SExpr (expr e symbols)
-    | Asn(var, e) -> SAsn(var, expr e symbols)
-    | Decl(var, t) -> SDecl(var, t)
-  in List.map append_sstmt stmts
+  (* recursively gather sstmt list *)
+  and append_sstmt symbols = function
+    | h :: t -> (
+      match h with
+      | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
+      | Asn(var, e) -> (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+      | Decl(var, tp) -> 
+        let symbols' = add_to_scope var tp symbols in
+        (SDecl(var, tp)) :: (append_sstmt symbols' t)
+      | AsnDecl(var, e) -> 
+        let (tp, se) = expr e symbols in
+        let symbols' = add_to_scope var tp symbols in
+        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t) )
+    | [] -> []
+  in
+  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
+  let g_scope = {symb = symbols_init; parent = None} in 
+  let symbols = check_stmt stmts g_scope
+  in append_sstmt symbols stmts
