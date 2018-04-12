@@ -107,14 +107,19 @@ let translate (stmt_list) =
         ) e' "tmp" builder
       | _ -> to_imp "" (* TODO: implemnet variable reference *)
     in 
-    let rec stmt_builder builder s = match s with
-        | SExpr e -> ignore(expr builder e)
+
+    match stmt with
+        | SExpr e -> ignore(expr builder e); var_map
         (* Handle a declaration *)
+
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in ignore(StringMap.add n addr var_map)
+                  in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
+
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map
-                  in ignore(L.build_store (expr builder sexpr) addr builder) (* TODO: should this really be ignored? *)
-    in stmt_builder builder stmt
-  in List.iter (build_statements StringMap.empty) stmt_list;
+                  in let e' = expr builder sexpr 
+                  in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
+
+  in let () = List.fold_left build_statements StringMap.empty stmt_list
+  (*in List.iter (build_statements StringMap.empty) stmt_list;*)
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
