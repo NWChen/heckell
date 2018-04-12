@@ -134,4 +134,5 @@ let translate (stmt_list) =
   in let () = List.iter build_function (List.filter (fun stmt -> ((not (is_decl stmt)) && (not (is_asn stmt)))) stmt_list)
 
   in ignore(L.build_ret (L.const_int i32_t 0) builder);
+
   the_module
