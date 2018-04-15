@@ -22,12 +22,13 @@ module StringMap = Map.Make(String)
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
-let translate (statement_list) =
+let translate (stmt_list) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type       context in
   let i8_t       = L.i8_type        context in
   let str_t      = L.pointer_type   i8_t    in
+  let void       = L.void_type      context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   let the_module = L.create_module context "Heckell" in
@@ -35,16 +36,47 @@ let translate (statement_list) =
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
       A.PrimTyp(A.Int) -> i32_t
-    | A.String       -> str_t
+    | A.String         -> str_t
+    | A.Set(_)         -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
   (* Declare a "printf" function to implement MicroC's "print". *)
   let printf_t : L.lltype = 
-      L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
+      L.var_arg_function_type i32_t [| str_t |] in
   let printf_func : L.llvalue = 
      L.declare_function "printf" printf_t the_module in 
 
+  (* str_t represents any pointer as char, void, hset_head pointers 
+     are all i8 pointers to LLVM *)
+  (* init_hset returns hset_head pointer (NULL) *)
+  let init_hset_t : L.lltype = 
+      L.var_arg_function_type str_t [| void |] in
+  let init_hset_func : L.llvalue =
+      L.declare_function "init_hste" init_hset_t the_module in
+   
+  (* add_val returns new hset_head pointer and
+     takes string of value, void pointer to value,
+     type string, and original hset_head pointer*)
+  let add_val_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t; str_t |] in
+  let add_val_func : L.llvalue =
+      L.declare_function "add_val" add_val_t the_module in
+
+  
+  (* del_val returns new hset_head pointer and
+     takes string of value, type string, and original hset_head pointer *)
+  let del_val_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let del_val_func : L.llvalue =
+      L.declare_function "del_val" add_val_t the_module in
+
+  (* destroy_hset takes hset_head pointer to be destroyed *)
+  let destroy_hset_t : L.lltype = 
+      L.var_arg_function_type void [| str_t |] in
+  let destroy_hset_func : L.llvalue =
+      L.declare_function "destroy_hset" add_val_t the_module in
+ 
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Make the LLVM module "aware" of the main function *)
@@ -55,27 +87,77 @@ let translate (statement_list) =
   let builder = L.builder_at_end context (L.entry_block the_function) in
   (* Create a pointer to a format string for printf *)
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder
-  in
+  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
-  (* Generate the instructions for a trivial "main" function *)
-  let build_function fdecl =
-    (* Generate LLVM code for a call to Heckell's "print" *)
-    let rec exprb builder (_, e) = match e with
+  let lookup n map = try StringMap.find n map
+                     with Not_found -> to_imp "ERROR: asn not found."
+  in
+  let build_statements var_map stmt = 
+    let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+      | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", (se_t, se)) -> ( match se_t with (* Generate a call instruction *)
-        | A.PrimTyp(A.Int) -> L.build_call printf_func [| int_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder
-        | A.String -> L.build_call printf_func [| str_format_str ; (exprb builder (se_t, se)) |]
-          "printf" builder
-        | _ -> to_imp "")
-      (* Throw an error for any other expressions *)
-      | _ -> to_imp ""
-    in match fdecl with
-    | SExpr e -> ignore(exprb builder e)
-    | _ -> ()
+      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
+      | SBinop (e1, op, e2) ->
+        let (t, _) = e1
+        and e1' = expr builder e1
+        and e2' = expr builder e2 in
+        if t = A.PrimTyp(A.Real) then (match op with 
+          A.Add     -> L.build_fadd
+        | A.Sub     -> L.build_fsub
+        | A.Mul     -> L.build_fmul
+        | A.Div     -> L.build_fdiv 
+        | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+        | A.Neq     -> L.build_fcmp L.Fcmp.One
+        | A.Less    -> L.build_fcmp L.Fcmp.Olt
+        | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+        | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+        | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+        | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
+        ) e1' e2' "tmp" builder 
+        else (match op with
+        | A.Add     -> L.build_add
+        | A.Sub     -> L.build_sub
+        | A.Mul     -> L.build_mul
+        | A.Div     -> L.build_sdiv
+        | A.And     -> L.build_and
+        | A.Or      -> L.build_or
+        | A.Equal   -> L.build_icmp L.Icmp.Eq
+        | A.Neq     -> L.build_icmp L.Icmp.Ne
+        | A.Less    -> L.build_icmp L.Icmp.Slt
+        | A.Leq     -> L.build_icmp L.Icmp.Sle
+        | A.Greater -> L.build_icmp L.Icmp.Sgt
+        | A.Geq     -> L.build_icmp L.Icmp.Sge
+        ) e1' e2' "tmp" builder
+      | SUniop(op, e) ->
+        let (t, _) = e and e' = expr builder e in
+        (match op with
+          A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
+        | A.Neg                            -> L.build_neg
+        ) e' "tmp" builder
+      | _ -> to_imp "" (* TODO: implemnet variable reference *)
+    in 
 
-  in List.iter build_function statement_list; L.build_ret (L.const_int i32_t 0) builder;
+    match stmt with
+        | SExpr e -> ignore(expr builder e); var_map
+        (* Handle a declaration *)
+        | SDecl (n, A.Set(_)) ->
+              (* addr should be return value of init_hset *)
+              let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder
+              and addr = L.build_alloca str_t n builder 
+              (* throws error if build_store in add vs ignore(build_store) ; add? *)
+              in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map 
+        | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
+                 in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
+        | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
+                  (* add val one by one and replace addr in var_map with new set *)
+        | SAsn (n, sexpr) -> let addr = StringMap.find n var_map 
+                  in let e' = expr builder sexpr 
+                  in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
+
+  in List.fold_left build_statements StringMap.empty stmt_list;
+  (*in List.iter (build_statements StringMap.empty) stmt_list;*)
+  ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
