@@ -56,10 +56,14 @@ let translate (stmt_list) =
   (* Create a pointer to a format string for printf *)
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
-  
+
+  let lookup n map = try StringMap.find n map
+                     with Not_found -> to_imp "ERROR: asn not found."
+  in
   let build_statements var_map stmt = 
     let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+      | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
@@ -103,14 +107,19 @@ let translate (stmt_list) =
         ) e' "tmp" builder
       | _ -> to_imp "" (* TODO: implemnet variable reference *)
     in 
-    let rec stmt_builder builder s = match s with
-        | SExpr e -> ignore(expr builder e)
+
+    match stmt with
+        | SExpr e -> ignore(expr builder e); var_map
         (* Handle a declaration *)
+
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in ignore(StringMap.add n addr var_map)
+                  in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
+
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map
-                  in ignore(L.build_store (expr builder sexpr) addr builder) (* TODO: should this really be ignored? *)
-    in stmt_builder builder stmt
-  in List.iter (build_statements StringMap.empty) stmt_list;
+                  in let e' = expr builder sexpr 
+                  in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
+
+  in List.fold_left build_statements StringMap.empty stmt_list;
+  (*in List.iter (build_statements StringMap.empty) stmt_list;*)
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
