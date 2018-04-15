@@ -1,0 +1,12 @@
+/*
+  multi
+    line
+      comment
+*/
+let x : int;
+x  = 2;	    // this will now show up in output
+
+// nor /* will this
+
+let s : string;
+s = "hello \(3 /* cant see me */ + 3)";
