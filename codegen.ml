@@ -133,12 +133,12 @@ let translate (stmt_list) =
 
             (* then basic block *)
             let then_bb = L.append_block context "then" the_function in
-            let then_builder = fst (List.fold_left stmt_builder (L.builder_at_end context then_bb, var_map) then_stmt) in
+            let then_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context then_bb, var_map) then_stmt in
             let () = add_terminal then_builder branch_instr in
 
             (* else basic block *)
             let else_bb = L.append_block context "else" the_function in
-            let else_builder = fst (List.fold_left stmt_builder (L.builder_at_end context else_bb, var_map) else_stmt) in
+            let else_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context else_bb, var_map) else_stmt in
             let () = add_terminal else_builder branch_instr in
 
             let _ = L.build_cond_br bool_val then_bb else_bb builder in
@@ -149,7 +149,7 @@ let translate (stmt_list) =
             let _ = L.build_br pred_bb builder in
 
             let body_bb = L.append_block context "while_body" the_function in
-            let while_builder = fst (List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body) in
+            let while_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body in
             (* let while_builder = stmt (L.builder_at_end context body_bb) body in *)
             let () = add_terminal while_builder (L.build_br pred_bb) in
 

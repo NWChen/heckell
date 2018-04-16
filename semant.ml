@@ -161,7 +161,7 @@ let check stmts =
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
       | Asn(var, e) -> (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
-      | Decl(var, tp) -> 
+      | Decl(var, tp) ->  
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
       | AsnDecl(var, e) -> 
