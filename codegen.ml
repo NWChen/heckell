@@ -85,10 +85,14 @@ let translate (stmt_list) =
     and determines where the next instruction should be placed *)
   let builder = L.builder_at_end context (L.entry_block the_function) in
   (* Create a pointer to a format string for printf *)
-  let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder
-  and int_str        = L.build_global_stringptr "Int"  "int" builder
-  and one_str        = L.build_global_stringptr "1"    "one" builder in
+  let int_format_str      = L.build_global_stringptr "%d\n" "fmt" builder 
+  and str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
+  and set_int_format_str  = L.build_global_stringptr "%d "  "set_str" builder
+  and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
+  and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
+  and int_str             = L.build_global_stringptr "Int"  "int" builder
+  and one_str             = L.build_global_stringptr "1"    "one" builder 
+  and two_str             = L.build_global_stringptr "2"    "two" builder in
 
   let lookup n map = try StringMap.find n map
                      with Not_found -> to_imp "ERROR: asn not found."
@@ -101,6 +105,20 @@ let translate (stmt_list) =
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
+      | SFuncCall ("print_set", e) -> match snd e with
+          | SSetLit(sl) -> 
+              L.build_call printf_func [| setl_format_str |] "printf" builder;
+              List.iter (fun e -> ignore(L.build_call printf_func [| set_int_format_str ; (expr builder e) |] "printf" builder)) sl;
+              L.build_call printf_func [| setr_format_str |] "printf" builder
+          (* | SId(n) -> let addr = lookup n var_map in 
+              let var_ptr = L.build_load addr "var_ptr" builder 
+              in match var_ptr with
+              | SSetLit(sl) -> 
+                  L.build_call printf_func [| setl_format_str |] "printf" builder;
+                  List.iter (fun e -> ignore(L.build_call printf_func [| set_int_format_str ; (expr builder e) |] "printf" builder)) sl;
+                  L.build_call printf_func [| setr_format_str |] "printf" builder
+              | _ -> raise (Failure "welp") *)
+          | _ -> raise (Failure "welp")
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = expr builder e1
@@ -154,7 +172,7 @@ let translate (stmt_list) =
         | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
               let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
               | [] -> raise (Failure "empty list added to set") 
-              | [ se ] -> L.build_call add_val_func [| one_str; 
+              | [ se ] -> L.build_call add_val_func [| two_str; 
                           L.const_inttoptr (expr builder se) str_t; int_str; 
                           hset_ptr |] "add_val" builder 
               | head :: tail -> 
