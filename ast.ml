@@ -42,6 +42,7 @@ and stmt =
   | AsnDecl of string * expr
   | Expr of expr
   | Iter of string list * expr
+  | If of expr * stmt list * stmt list
 
 type program = stmt list
 (* TODO: op for `(...)` (PARAMS) *)

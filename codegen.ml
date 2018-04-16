@@ -60,7 +60,7 @@ let translate (stmt_list) =
   let lookup n map = try StringMap.find n map
                      with Not_found -> to_imp "ERROR: asn not found."
   in
-  let build_statements var_map stmt = 
+  let build_statements (builder, var_map) stmt = 
     let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SId s -> L.build_load (lookup s var_map) s builder
@@ -108,18 +108,45 @@ let translate (stmt_list) =
       | _ -> to_imp "" (* TODO: implemnet variable reference *)
     in 
 
-    match stmt with
-        | SExpr e -> ignore(expr builder e); var_map
+    let add_terminal builder f = match L.block_terminator (L.insertion_block builder) with
+        Some _ -> ()
+      | None -> ignore (f builder) in
+
+    (* match stmt with *)
+    let rec stmt_builder (builder, var_map) = function 
+          SExpr e -> ignore(expr builder e); (builder, var_map)
         (* Handle a declaration *)
 
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
+                  in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
 
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map
-                  in let e' = expr builder sexpr 
-                  in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
+                  in let e' = expr builder sexpr
+                  in let _ = L.build_store e' addr builder 
+                  in (builder, var_map) (* TODO: should this really be ignored? *)
+        | SIf (predicate, then_stmt, else_stmt) ->
+          let bool_val = expr builder predicate in
+          let merge_bb = L.append_block context "merge" the_function in
+          let branch_instr = L.build_br merge_bb in
 
-  in List.fold_left build_statements StringMap.empty stmt_list;
+          (* then basic block *)
+          let then_bb = L.append_block context "then" the_function in
+          let temp1 = L.builder_at_end context then_bb in
+          let then_builder = fst (List.fold_left stmt_builder (temp1, var_map) then_stmt) in
+          let () = add_terminal then_builder branch_instr in
+
+          (* else basic block *)
+          let else_bb = L.append_block context "else" the_function in
+          let temp2 = L.builder_at_end context else_bb in
+          let else_builder = fst (List.fold_left stmt_builder (temp2, var_map) else_stmt) in
+          let () = add_terminal else_builder branch_instr in
+
+          let _ = L.build_cond_br bool_val then_bb else_bb builder in
+          (* Move to the merge block for further instruction building *)
+          (L.builder_at_end context merge_bb, var_map)
+    in stmt_builder (builder, var_map) stmt
+
+  in let builder = fst (List.fold_left build_statements (builder, StringMap.empty) stmt_list) in
   (*in List.iter (build_statements StringMap.empty) stmt_list;*)
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module

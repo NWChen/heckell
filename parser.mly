@@ -13,6 +13,7 @@
 %token ARRAY
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
+%token IF THEN ELSE
 %token <int> LITERAL
 %token <float> REALLIT
 %token <char> CHARLIT
@@ -26,6 +27,7 @@
 %token EOF
 
 /* TODO: Precedence and associativity */
+%nonassoc ELSE
 /* %nonassoc COLON */
 %right SEMI
 %right DSEMI END
@@ -176,6 +178,7 @@ stmt:
                             in let formals = List.map check_id $3
                             in List.rev formals),
                             List.rev $6)) }
+| IF LPAREN expr RPAREN THEN stmt_list ELSE stmt_list DSEMI   { If($3, $6, $8) }
 
 stmt_list:
   /* nothing */  { [] }

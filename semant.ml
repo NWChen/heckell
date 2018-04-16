@@ -132,6 +132,11 @@ let check stmts =
     | _ -> raise (Failure ("not matched"))
   
   and check_stmt to_check symbols = 
+    let check_bool_expr e = 
+      let (t', e') = expr e symbols
+      and err = "expected Boolean expression in " ^ string_of_expr e
+      in if t' != PrimTyp(Bool) then raise (Failure err) else (t', e') 
+    in
     match to_check with
     | [] -> symbols
     | stmt :: tail -> match stmt with
@@ -147,6 +152,7 @@ let check stmts =
         let (et, se) = expr e symbols in
         check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
+      | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
 
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
@@ -160,7 +166,11 @@ let check stmts =
       | AsnDecl(var, e) -> 
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
-        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t) )
+        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+      | If(p, b1, b2) -> 
+        let (tp, se) = expr p symbols in
+        SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
+    )
     | [] -> []
   in
   let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
