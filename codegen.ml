@@ -68,13 +68,18 @@ let translate (stmt_list) =
   let del_val_t : L.lltype = 
       L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
   let del_val_func : L.llvalue =
-      L.declare_function "del_val" add_val_t the_module in
+      L.declare_function "del_val" del_val_t the_module in
 
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
       L.var_arg_function_type void [| str_t |] in
   let destroy_hset_func : L.llvalue =
-      L.declare_function "destroy_hset" add_val_t the_module in
+      L.declare_function "destroy_hset" destroy_hset_t the_module in
+
+  let print_hset_t : L.lltype =
+      L.var_arg_function_type void [| str_t |] in
+  let print_hset_func : L.llvalue =
+      L.declare_function "print_hset" print_hset_t the_module in
 
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
@@ -110,14 +115,9 @@ let translate (stmt_list) =
               L.build_call printf_func [| setl_format_str |] "printf" builder;
               List.iter (fun e -> ignore(L.build_call printf_func [| set_int_format_str ; (expr builder e) |] "printf" builder)) sl;
               L.build_call printf_func [| setr_format_str |] "printf" builder
-          (* | SId(n) -> let addr = lookup n var_map in 
-              let var_ptr = L.build_load addr "var_ptr" builder 
-              in match var_ptr with
-              | SSetLit(sl) -> 
-                  L.build_call printf_func [| setl_format_str |] "printf" builder;
-                  List.iter (fun e -> ignore(L.build_call printf_func [| set_int_format_str ; (expr builder e) |] "printf" builder)) sl;
-                  L.build_call printf_func [| setr_format_str |] "printf" builder
-              | _ -> raise (Failure "welp") *)
+          | SId(n) -> let addr = lookup n var_map in 
+              let hset_ptr = L.build_load addr "var_ptr" builder 
+              in L.build_call print_hset_func [| hset_ptr |] "" builder
           | _ -> raise (Failure "welp")
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
