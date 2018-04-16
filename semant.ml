@@ -169,7 +169,7 @@ let check stmts =
         (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
-        SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
+        SIf((tp, se), append_sstmt symbols (List.rev b1), append_sstmt symbols (List.rev b2)) :: (append_sstmt symbols t)
     )
     | [] -> []
   in

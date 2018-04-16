@@ -28,6 +28,7 @@ let translate (stmt_list) =
   let i32_t      = L.i32_type       context in
   let i8_t       = L.i8_type        context in
   let str_t      = L.pointer_type   i8_t    in
+  let i1_t       = L.i1_type        context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   let the_module = L.create_module context "Heckell" in
@@ -35,6 +36,7 @@ let translate (stmt_list) =
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
       A.PrimTyp(A.Int) -> i32_t
+    | A.PrimTyp(A.Bool)  -> i1_t
     | A.String         -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
@@ -62,10 +64,10 @@ let translate (stmt_list) =
   in
   let build_statements (builder, var_map) stmt = 
     let rec expr builder (_, e) = match e with
-        SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+        SLit i -> L.const_int i32_t i
+      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SId s -> L.build_load (lookup s var_map) s builder
-      | SStringLit s -> 
-        L.build_global_stringptr s ".str" builder
+      | SStringLit s -> L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) ->
@@ -105,7 +107,7 @@ let translate (stmt_list) =
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
-      | _ -> to_imp "" (* TODO: implemnet variable reference *)
+      | _ -> to_imp "expression builder" (* TODO: implemnet variable reference *)
     in 
 
     let add_terminal builder f = match L.block_terminator (L.insertion_block builder) with
