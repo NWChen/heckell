@@ -1,0 +1,2 @@
+let S : int set;
+S = {1, 2};

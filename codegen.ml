@@ -51,9 +51,9 @@ let translate (stmt_list) =
      are all i8 pointers to LLVM *)
   (* init_hset returns hset_head pointer (NULL) *)
   let init_hset_t : L.lltype = 
-      L.var_arg_function_type str_t [| void |] in
+      L.var_arg_function_type str_t [| (* void *) |] in
   let init_hset_func : L.llvalue =
-      L.declare_function "init_hste" init_hset_t the_module in
+      L.declare_function "init_hset" init_hset_t the_module in
    
   (* add_val returns new hset_head pointer and
      takes string of value, void pointer to value,
@@ -63,7 +63,6 @@ let translate (stmt_list) =
   let add_val_func : L.llvalue =
       L.declare_function "add_val" add_val_t the_module in
 
-  
   (* del_val returns new hset_head pointer and
      takes string of value, type string, and original hset_head pointer *)
   let del_val_t : L.lltype = 
@@ -76,7 +75,7 @@ let translate (stmt_list) =
       L.var_arg_function_type void [| str_t |] in
   let destroy_hset_func : L.llvalue =
       L.declare_function "destroy_hset" add_val_t the_module in
- 
+
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Make the LLVM module "aware" of the main function *)
@@ -87,7 +86,9 @@ let translate (stmt_list) =
   let builder = L.builder_at_end context (L.entry_block the_function) in
   (* Create a pointer to a format string for printf *)
   let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
+  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder
+  and int_str        = L.build_global_stringptr "Int"  "int" builder
+  and one_str        = L.build_global_stringptr "1"    "one" builder in
 
   let lookup n map = try StringMap.find n map
                      with Not_found -> to_imp "ERROR: asn not found."
@@ -139,7 +140,6 @@ let translate (stmt_list) =
         ) e' "tmp" builder
       | _ -> to_imp "" (* TODO: implemnet variable reference *)
     in 
-
     match stmt with
         | SExpr e -> ignore(expr builder e); var_map
         (* Handle a declaration *)
@@ -150,9 +150,24 @@ let translate (stmt_list) =
               (* throws error if build_store in add vs ignore(build_store) ; add? *)
               in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map 
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                 in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
+              in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
         | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
-                  (* add val one by one and replace addr in var_map with new set *)
+              let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
+              | [] -> raise (Failure "empty list added to set") 
+              | [ se ] -> L.build_call add_val_func [| one_str; 
+                          L.const_inttoptr (expr builder se) str_t; int_str; 
+                          hset_ptr |] "add_val" builder 
+              | head :: tail -> 
+                    let new_hset_ptr = L.build_call add_val_func [| one_str; 
+                                       L.const_inttoptr (expr builder head) str_t; int_str; 
+                                       hset_ptr |] "add_val" builder 
+                    in add_list_vals tail new_hset_ptr
+              in
+              let addr = StringMap.find n var_map 
+              in let curr_hset_ptr = L.build_load addr "hset_ptr" builder 
+              in let final_hset_ptr = add_list_vals sl curr_hset_ptr 
+              in ignore(L.build_store final_hset_ptr addr builder); var_map
+        (* add val one by one and replace addr in var_map with new set *)
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map 
                   in let e' = expr builder sexpr 
                   in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)
