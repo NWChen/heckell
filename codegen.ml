@@ -59,7 +59,7 @@ let translate (stmt_list) =
      takes string of value, void pointer to value,
      type string, and original hset_head pointer*)
   let add_val_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t; str_t |] in
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
   let add_val_func : L.llvalue =
       L.declare_function "add_val" add_val_t the_module in
 
@@ -96,9 +96,7 @@ let translate (stmt_list) =
   and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
   and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
   and int_str             = L.build_global_stringptr "Int"  "int" builder
-  and one_str             = L.build_global_stringptr "1"    "one" builder 
-  and two_str             = L.build_global_stringptr "2"    "two" builder in
-
+  in
   let lookup n map = try StringMap.find n map
                      with Not_found -> to_imp "ERROR: asn not found."
   in
@@ -172,13 +170,14 @@ let translate (stmt_list) =
         | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
               let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
               | [] -> raise (Failure "empty list added to set") 
-              | [ se ] -> L.build_call add_val_func [| two_str; 
-                          L.const_inttoptr (expr builder se) str_t; int_str; 
-                          hset_ptr |] "add_val" builder 
+              | [ se ] -> L.build_call add_val_func 
+                          [| L.const_inttoptr (expr builder se) str_t; int_str; hset_ptr |] 
+                          "add_val" builder 
               | head :: tail -> 
-                    let new_hset_ptr = L.build_call add_val_func [| one_str; 
-                                       L.const_inttoptr (expr builder head) str_t; int_str; 
-                                       hset_ptr |] "add_val" builder 
+                    let new_hset_ptr = 
+                          L.build_call add_val_func 
+                          [| L.const_inttoptr (expr builder head) str_t; int_str; hset_ptr |] 
+                          "add_val" builder 
                     in add_list_vals tail new_hset_ptr
               in
               let addr = StringMap.find n var_map 
