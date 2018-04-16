@@ -147,7 +147,6 @@ let check stmts =
         let (et, se) = expr e symbols in
         check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
-
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
     | h :: t -> (
