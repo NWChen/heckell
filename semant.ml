@@ -153,6 +153,7 @@ let check stmts =
         check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
+      | While(p, s) -> check_bool_expr p; check_stmt s symbols
 
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
@@ -170,6 +171,9 @@ let check stmts =
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
         SIf((tp, se), append_sstmt symbols (List.rev b1), append_sstmt symbols (List.rev b2)) :: (append_sstmt symbols t)
+      | While(p, s) -> 
+        let (tp, se) = expr p symbols in
+        SWhile((tp, se), append_sstmt symbols (List.rev s)) :: (append_sstmt symbols t)
     )
     | [] -> []
   in

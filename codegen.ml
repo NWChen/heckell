@@ -127,25 +127,39 @@ let translate (stmt_list) =
                   in let _ = L.build_store e' addr builder 
                   in (builder, var_map) (* TODO: should this really be ignored? *)
         | SIf (predicate, then_stmt, else_stmt) ->
-          let bool_val = expr builder predicate in
-          let merge_bb = L.append_block context "merge" the_function in
-          let branch_instr = L.build_br merge_bb in
+            let bool_val = expr builder predicate in
+            let merge_bb = L.append_block context "merge" the_function in
+            let branch_instr = L.build_br merge_bb in
 
-          (* then basic block *)
-          let then_bb = L.append_block context "then" the_function in
-          let temp1 = L.builder_at_end context then_bb in
-          let then_builder = fst (List.fold_left stmt_builder (temp1, var_map) then_stmt) in
-          let () = add_terminal then_builder branch_instr in
+            (* then basic block *)
+            let then_bb = L.append_block context "then" the_function in
+            let then_builder = fst (List.fold_left stmt_builder (L.builder_at_end context then_bb, var_map) then_stmt) in
+            let () = add_terminal then_builder branch_instr in
 
-          (* else basic block *)
-          let else_bb = L.append_block context "else" the_function in
-          let temp2 = L.builder_at_end context else_bb in
-          let else_builder = fst (List.fold_left stmt_builder (temp2, var_map) else_stmt) in
-          let () = add_terminal else_builder branch_instr in
+            (* else basic block *)
+            let else_bb = L.append_block context "else" the_function in
+            let else_builder = fst (List.fold_left stmt_builder (L.builder_at_end context else_bb, var_map) else_stmt) in
+            let () = add_terminal else_builder branch_instr in
 
-          let _ = L.build_cond_br bool_val then_bb else_bb builder in
-          (* Move to the merge block for further instruction building *)
-          (L.builder_at_end context merge_bb, var_map)
+            let _ = L.build_cond_br bool_val then_bb else_bb builder in
+            (* Move to the merge block for further instruction building *)
+            (L.builder_at_end context merge_bb, var_map)
+        | SWhile (predicate, body) ->
+            let pred_bb = L.append_block context "while" the_function in
+            let _ = L.build_br pred_bb builder in
+
+            let body_bb = L.append_block context "while_body" the_function in
+            let while_builder = fst (List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body) in
+            (* let while_builder = stmt (L.builder_at_end context body_bb) body in *)
+            let () = add_terminal while_builder (L.build_br pred_bb) in
+
+            let pred_builder = L.builder_at_end context pred_bb in
+            let bool_val = expr pred_builder predicate in
+
+            let merge_bb = L.append_block context "merge" the_function in
+            let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+            (L.builder_at_end context merge_bb, var_map)
+
     in stmt_builder (builder, var_map) stmt
 
   in let builder = fst (List.fold_left build_statements (builder, StringMap.empty) stmt_list) in

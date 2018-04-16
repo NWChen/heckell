@@ -78,6 +78,8 @@ rule tokenize = parse
 | "if"      { IF }
 | "then"    { THEN }
 | "else"    { ELSE }
+| "while"   { WHILE }
+| "do"      { DO }
 | digit+ as lit                 { LITERAL(int_of_string lit) }
 | (digit+ exp | (digit+ '.' digit* | '.' digit+) exp?) as reallit  
   { REALLIT(float_of_string reallit) }

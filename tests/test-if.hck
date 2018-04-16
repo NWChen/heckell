@@ -1,1 +1,6 @@
-if (true) then print_string("first"); print_string("second"); else print_string("third"); ;;
+if true then
+	print_string("first");
+	print_string("second");
+else 
+	print_string("third");
+end
