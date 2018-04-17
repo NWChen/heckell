@@ -33,7 +33,7 @@ let check stmts =
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
   let rec expr e scope = match e with
-    | Id s  -> (type_of_identifier s scope, SId s)
+    | Id s  -> print_string "id s"; (type_of_identifier s scope, SId s)
     | Binop (e1, op, e2) ->
       let (t1, e1') = expr e1 scope
       and (t2, e2') = expr e2 scope in
@@ -96,7 +96,7 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
-    | FuncDefNamed(f, al, sl) -> (
+    | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with
       | Func(in_t, out_t) ->
@@ -160,17 +160,19 @@ let check stmts =
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(var, e) -> (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
-      | Decl(var, tp) ->  
+      | Asn(var, e) -> print_string "asn";
+        (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+      | Decl(var, tp) -> print_string "decl";
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(var, e) -> 
+      | AsnDecl(var, e) -> print_string "asndecl";
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
-        SIf((tp, se), append_sstmt symbols (List.rev b1), append_sstmt symbols (List.rev b2)) :: (append_sstmt symbols t)
+        (*SIf((tp, se), append_sstmt symbols (List.rev b1), append_sstmt symbols (List.rev b2)) :: (append_sstmt symbols t)*)
+        SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
       | While(p, s) -> 
         let (tp, se) = expr p symbols in
         SWhile((tp, se), append_sstmt symbols (List.rev s)) :: (append_sstmt symbols t)
@@ -182,3 +184,4 @@ let check stmts =
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
   in append_sstmt symbols stmts
+

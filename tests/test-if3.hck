@@ -1,0 +1,7 @@
+if true then
+	let x:int;
+	x=3;
+else 
+	let y:int;
+	y=2;
+end

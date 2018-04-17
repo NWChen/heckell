@@ -85,6 +85,7 @@ and string_of_stmt = function
   | AsnDecl(s, e) -> "let " ^ s ^ " = " ^ string_of_expr e
   | Expr(e) -> string_of_expr e
   | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
+  | If(e, stmts, stmts2) -> "if " ^ (string_of_expr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_stmt stmts)) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_stmt stmts2))
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
