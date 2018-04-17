@@ -174,7 +174,7 @@ let check stmts =
         SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
       | While(p, s) -> 
         let (tp, se) = expr p symbols in
-        SWhile((tp, se), append_sstmt symbols (List.rev s)) :: (append_sstmt symbols t)
+        SWhile((tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
     )
     | [] -> []
   in
