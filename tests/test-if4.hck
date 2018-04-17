@@ -1,7 +1,0 @@
-if true then
-	x=3;
-	let x:int;
-else 
-	y=2;
-	let y:int;
-end
