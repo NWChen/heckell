@@ -33,7 +33,7 @@ let check stmts =
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
   let rec expr e scope = match e with
-    | Id s  -> print_string "id s"; (type_of_identifier s scope, SId s)
+    | Id s  -> (type_of_identifier s scope, SId s)
     | Binop (e1, op, e2) ->
       let (t1, e1') = expr e1 scope
       and (t2, e2') = expr e2 scope in

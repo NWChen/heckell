@@ -3,6 +3,7 @@ if true then
 	x = 3;
 	let z: int;
 	z = 6;
+	print(z + x);
 else 
 	let y:int;
 	y=2;

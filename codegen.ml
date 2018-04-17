@@ -63,17 +63,17 @@ let translate (stmt_list) =
                      with Not_found -> to_imp "ERROR: asn not found."
   in
   let build_statements (builder, var_map) stmt = 
-    let rec expr builder (_, e) = match e with
+    let rec expr builder var_map (_, e) = match e with
         SLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
-      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
+      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
+      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
-        and e1' = expr builder e1
-        and e2' = expr builder e2 in
+        and e1' = expr builder var_map e1
+        and e2' = expr builder var_map e2 in
         if t = A.PrimTyp(A.Real) then (match op with 
           A.Add     -> L.build_fadd
         | A.Sub     -> L.build_fsub
@@ -102,7 +102,7 @@ let translate (stmt_list) =
         | A.Geq     -> L.build_icmp L.Icmp.Sge
         ) e1' e2' "tmp" builder
       | SUniop(op, e) ->
-        let (t, _) = e and e' = expr builder e in
+        let (t, _) = e and e' = expr builder var_map e in
         (match op with
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
@@ -116,18 +116,18 @@ let translate (stmt_list) =
 
     (* match stmt with *)
     let rec stmt_builder (builder, var_map) = function 
-          SExpr e -> ignore(expr builder e); (builder, var_map)
+          SExpr e -> ignore(expr builder var_map e); (builder, var_map)
         (* Handle a declaration *)
 
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
                   in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
 
-        | SAsn (n, sexpr) -> let addr = StringMap.find n var_map
-                  in let e' = expr builder sexpr
+        | SAsn (n, sexpr) -> let addr = lookup n var_map
+                  in let e' = expr builder var_map sexpr
                   in let _ = L.build_store e' addr builder 
                   in (builder, var_map) (* TODO: should this really be ignored? *)
         | SIf (predicate, then_stmt, else_stmt) ->
-            let bool_val = expr builder predicate in
+            let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
             let branch_instr = L.build_br merge_bb in
 
@@ -154,7 +154,7 @@ let translate (stmt_list) =
             let () = add_terminal while_builder (L.build_br pred_bb) in
 
             let pred_builder = L.builder_at_end context pred_bb in
-            let bool_val = expr pred_builder predicate in
+            let bool_val = expr pred_builder var_map predicate in
 
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
