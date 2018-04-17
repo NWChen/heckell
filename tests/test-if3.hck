@@ -1,6 +1,8 @@
 if true then
 	let x:int;
-	x=3;
+	x = 3;
+	let z: int;
+	z = 6;
 else 
 	let y:int;
 	y=2;

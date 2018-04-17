@@ -160,18 +160,17 @@ let check stmts =
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(var, e) -> print_string "asn";
+      | Asn(var, e) ->
         (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
-      | Decl(var, tp) -> print_string "decl";
+      | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(var, e) -> print_string "asndecl";
+      | AsnDecl(var, e) ->
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
-        (*SIf((tp, se), append_sstmt symbols (List.rev b1), append_sstmt symbols (List.rev b2)) :: (append_sstmt symbols t)*)
         SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
       | While(p, s) -> 
         let (tp, se) = expr p symbols in

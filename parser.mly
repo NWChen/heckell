@@ -178,7 +178,7 @@ stmt:
                             in let formals = List.map check_id $3
                             in List.rev formals),
                             List.rev $6)) }
-| IF expr THEN stmt_list ELSE stmt_list END   { If($2, $4, $6) }
+| IF expr THEN stmt_list ELSE stmt_list END   { If($2, List.rev $4, List.rev $6) }
 | WHILE expr DO stmt_list END { While($2, $4) }
 
 stmt_list:
