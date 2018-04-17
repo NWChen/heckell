@@ -150,7 +150,6 @@ let translate (stmt_list) =
 
             let body_bb = L.append_block context "while_body" the_function in
             let while_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body in
-            (* let while_builder = stmt (L.builder_at_end context body_bb) body in *)
             let () = add_terminal while_builder (L.build_br pred_bb) in
 
             let pred_builder = L.builder_at_end context pred_bb in
@@ -163,6 +162,5 @@ let translate (stmt_list) =
     in stmt_builder (builder, var_map) stmt
 
   in let builder = fst (List.fold_left build_statements (builder, StringMap.empty) stmt_list) in
-  (*in List.iter (build_statements StringMap.empty) stmt_list;*)
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module

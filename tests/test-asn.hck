@@ -9,4 +9,5 @@ print(y);
 
 let z: int;
 z = 7;
+
 print(z);
