@@ -1,0 +1,6 @@
+@NEIL: plz help me finish thank youuuuuu T_T and run tests plz yay~
+
+some test cases that are non-microc:
+test-str.hck (printing strings)
+test-if3.hck (not having variable declaraionts all at top of scope)
+test-while.hck (not having to wrap things in a function)
