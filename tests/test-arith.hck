@@ -2,7 +2,9 @@ let a: int;
 a = 5;
 
 let b: int;
-b = 5;
+b = 6;
 
 let c: int;
-c = a + 5;
+c = a + 7;
+
+print(c);

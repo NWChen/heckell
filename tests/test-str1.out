@@ -1,6 +1,0 @@
-let s: string
-s = "hello world!"
-"hello world
-This is a new line"
-""special" 	 'test'"
-"Hello"
