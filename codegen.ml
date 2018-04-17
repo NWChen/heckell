@@ -29,15 +29,16 @@ let translate (stmt_list) =
   let i8_t       = L.i8_type        context in
   let str_t      = L.pointer_type   i8_t    in
   let i1_t       = L.i1_type        context in
+  let arr_t      = L.pointer_type   i8_t    in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   let the_module = L.create_module context "Heckell" in
 
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
-      A.PrimTyp(A.Int) -> i32_t
+      A.PrimTyp(A.Int)   -> i32_t
     | A.PrimTyp(A.Bool)  -> i1_t
-    | A.String         -> str_t
+    | A.String           -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 

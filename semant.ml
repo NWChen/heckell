@@ -94,7 +94,7 @@ let check stmts =
       in (
         match is_valid with
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
-        | true -> (Set(arr_t), SArrayLit (sexpr_list))
+        | true -> (Array(arr_t), SArrayLit (sexpr_list))
       )
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
