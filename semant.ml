@@ -129,6 +129,7 @@ let check stmts =
           in let _ = check_asn left_t right_t err 
           in check_stmt tail symbols
       | Expr e -> check_stmt tail symbols  
+      | _ -> check_stmt tail symbols (* For so-far undefined features, e.g. Iter *)
   in 
   let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty
   in 
@@ -140,4 +141,5 @@ let check stmts =
     | Expr e -> SExpr (expr e symbols)
     | Asn(var, e) -> SAsn(var, expr e symbols)
     | Decl(var, t) -> SDecl(var, t)
+    | Iter(var, e) -> SIter(var, expr e symbols)
   in List.map append_sstmt stmts
