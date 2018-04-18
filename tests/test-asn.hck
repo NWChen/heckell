@@ -1,0 +1,13 @@
+let x : int;
+x = 5;
+
+let y: int;
+y = 6;
+
+print(x);
+print(y);
+
+let z: int;
+z = 7;
+
+print(z);

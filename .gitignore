@@ -1,3 +1,5 @@
+README.md
+
 *.annot
 *.cmo
 *.cma
@@ -28,6 +30,9 @@ setup.log
 
 # Merlin configuring file for Vim and Emacs
 .merlin
+
+# microc
+microc/
 
 # llvm
 llvm/

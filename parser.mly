@@ -6,15 +6,16 @@
 %token LPAREN RPAREN
 %token LBRACE RBRACE
 
-%token LET IN COLON COMMA SEMI DSEMI ARROW	
+%token LET IN COLON COMMA SEMI DSEMI END ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR STRING
 %token SET 
 %token ARRAY
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
+%token IF THEN ELSE WHILE DO
 %token <int> LITERAL
-%token <string> REALLIT
+%token <float> REALLIT
 %token <char> CHARLIT
 %token <bool> BOOLLIT
 %token <string> STRINGLIT
@@ -26,9 +27,10 @@
 %token EOF
 
 /* TODO: Precedence and associativity */
+%nonassoc ELSE
 /* %nonassoc COLON */
 %right SEMI
-%right DSEMI
+%right DSEMI END
 /*%left LET*/
 %left COMMA
 %right EQUAL
@@ -40,6 +42,7 @@
 %left AND
 %left EQ NEQ
 %left LT GT LEQ GEQ
+%left IN
 %left PLUS MINUS
 %left TIMES DIVIDE
 %right NEG
@@ -106,8 +109,9 @@ expr:
 | expr GEQ    expr      { Binop($1, Geq,   $3) }
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
-| ID LPAREN   expr_list RPAREN { FuncCall($1, TupleLit(List.rev $3)) }
-| LPAREN expr_list RPAREN { TupleLit(List.rev $2) }
+| expr IN     expr      { Binop($1, Member, $3) }
+| ID single_or_tuple    { FuncCall($1, $2) }
+| single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
 | LBRACKET expr_list ELLIPSE expr RBRACKET 
@@ -117,33 +121,65 @@ expr:
       | _ -> raise (Failure("Incompatible arguments for ArrayRange"))
     }
 /* TODO: Allow for set of tuples */
-| LBRACE ID IN expr PIPE expr set_build_ext_cond RBRACE   
-    { SetBuilder(
-        (* identity function *)
-        None, 
-        Iter($2, $4), 
-        FuncDef([Id($2)], [Expr(
-          List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) $6 (List.rev $7)
-        )])
-      )}
-| LBRACE expr PIPE ID IN expr set_build_ext_cond RBRACE
-    { SetBuilder(
-        Some(FuncDef([Id($4)], [Expr($2)])), 
-        Iter($4, $6),
-        FuncDef([Id($4)], [Expr(
-          match (List.rev $7) with
-          | [] -> BoolLit(true)
-          | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
-        )])
-      )}
+| LBRACE expr PIPE expr_list_ne RBRACE   
+    {
+      let rec to_ids = function
+        | h::t -> (
+          match h with
+          | Id(s) -> s::(to_ids t)
+          | _ -> raise(Failure("an iterator must take an id")) )
+        | [] -> []
+      in match $4 with 
+        | [] -> raise(Failure("at least one condition needed")) 
+        | _ -> let builder_conds = List.rev $4
+      in match $2 with
+        | Binop(x, Member, set) -> (* iter | expr *)
+          let elem = match x with
+            | Id(s) -> [s]
+            | TupleLit(l) -> to_ids l
+            | _ -> raise(Failure("an iterator only takes ids"))
+          in SetBuilder(
+            None, Iter(elem, set),
+            List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (List.hd builder_conds) (List.tl builder_conds)
+            )
+        | ex -> ( (* expr | iter *)
+          match (List.hd builder_conds) with
+          | Binop(x, Member, set) -> (
+            let elem = match x with
+              | Id(s) -> [s]
+              | TupleLit(l) -> to_ids l
+              | _ -> raise(Failure("an iterator only takes ids"))
+            in let cond = match (List.tl builder_conds) with
+              | [] -> BoolLit(true)
+              | h::t -> List.fold_left (fun e1 e2 -> Binop(e1, And, e2)) (h) (t)
+            in SetBuilder(Some ex, Iter(elem, set), cond) )
+          | _ -> raise(Failure("iterator expected")) )
+    }
+  
+
+single_or_tuple:
+| LPAREN expr_list_ne RPAREN  { match $2 with 
+                                | [x] -> x
+                                | l -> TupleLit(List.rev l)
+                              }
 
 
 stmt:
 | expr SEMI                { Expr($1) }
 | ID EQUAL expr SEMI       { Asn($1, $3) }
 | LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| ID LPAREN expr_list RPAREN EQUAL func_stmt_list DSEMI
-                           { Asn($1, FuncDef(List.rev $3, List.rev $6)) }
+| LET ID EQUAL expr SEMI   { AsnDecl($2, $4) }
+| ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
+                           { Asn($1, FuncDefNamed($1, 
+                            (let check_id e = 
+                              match e with
+                              | Id(s) -> s
+                              | _ -> raise(Failure("wrong function formals"))
+                            in let formals = List.map check_id $3
+                            in List.rev formals),
+                            List.rev $6)) }
+| IF expr THEN stmt_list ELSE stmt_list END   { If($2, List.rev $4, List.rev $6) }
+| WHILE expr DO stmt_list END { While($2, List.rev $4) }
 
 stmt_list:
   /* nothing */  { [] }
@@ -174,6 +210,10 @@ expr_list:
 | expr                 { [$1] }
 | expr_list COMMA expr { $3 :: $1 }
 
+expr_list_ne:
+| expr                 { [$1] }
+| expr_list COMMA expr { $3 :: $1 }
+
 /* 
   This is tricky, all our stmts end with semicolon, however 
   the last stmt in this list should end without it as the
@@ -186,9 +226,6 @@ expr_list:
 func_stmt_list:
 | stmt_list expr  { Expr($2) :: $1 }
 
-set_build_ext_cond:
-  /* nothing */       { [] }
-| COMMA expr_list  { $2 }
 
 
 /*formal_opt:
