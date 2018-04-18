@@ -86,6 +86,7 @@ and string_of_stmt = function
   | Expr(e) -> string_of_expr e
   | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
   | If(e, stmts, stmts2) -> "if " ^ (string_of_expr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts))) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts2)))
+  | _ -> ""
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
@@ -148,6 +149,7 @@ and string_of_sstmt = function
     in let str_sdecl = List.map helper sl
     in "(" ^ (String.concat ", " str_sdecl) ^ ") in " ^ string_of_sexpr e
   | SIf(e, stmts, stmts2) -> "if " ^ (string_of_sexpr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts)) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts2))
+  | _ -> ""
 
 let string_of_sprogram sstmts = 
   String.concat "\n" (List.map string_of_sstmt sstmts) ^ "\n"
