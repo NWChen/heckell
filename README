@@ -1,46 +1,18 @@
-@NEIL: plz help me finish thank youuuuuu T_T and run tests plz yay~
-
-## Instructions
-### Building the compiler
-This project's `Makefile` provides everything needed to build the compiler - just run:
-
-$ make
-
-Some warnings are expected due to not-yet-implemented functionality in `semant.ml`, but no `OCamlyacc` warnings or errors should occur.
-
-### Executing the compiler
-To run tests, compile the resulting LLVM code, and validate output, simply run the `testall.sh` script:
-
-$ ./testall.sh
-
-`testall.sh` runs the `Heckell` compiler (as it stands) on all tests provided in the `tests` directory. We provide 3 positive tests with filenames `test-*.hck`. The test script `testall.sh` prints "SUCCESS" when the generated output matches the expected output.
-
-To pass your own inputs via file to the compiler, run:
-
-$ ./heckell < (your filename)
-
-The output will be the compiled LLVM output.
-
-some test cases that are non-microc:
-test-str.hck (printing strings)
-test-if3.hck (not having variable declaraionts all at top of scope)
-test-while.hck (not having to wrap things in a function)
-
-
-===
-
 # `heckell`
+===========
 Welcome to `heckell`! We're confident that you'll like what we've built for you!
 
 ## Team
+-------
 - Chan Pham, tqp2001@columbia.edu
 - Margaret Qian, myq2000@columbia.edu
 - Sebastian Cueva-Caro, sc3972@columbia.edu
 - Neil Chen, nwc2112@columbia.edu
 
-## How to run compilation and testing scripts
-To build the `heckell` compiler and run all integration tests, simply run the following commands:
 
+## How to run compilation and testing scripts
+---------------------------------------------
+To build the `heckell` compiler and run all integration tests, simply run the following commands:
 
 ```
 $ make
@@ -49,17 +21,25 @@ $ ./testall.sh
 
 where `make` compiles the `heckell` compiler, and `./testall.sh` runs all integration tests. No warnings or errors should result. If a test matches its expected output (positive or negative), the token "SUCCESS" is printed.
 
+
 ## Integration tests
+--------------------
 We provide 16 tests (13 positive / 3 negative). Positive tests are named `test-<feature>.hck`. Negative tests are named `fail-<feature>.hck`. Below we describe each test:
 
+
 ### Negative tests
-These tests fail to compile due to an expected semantic error.
+------------------
+These tests fail to compile due to an expected semantic error:
+
 - `fail-asn.hck`    - A variable (`x`) must be declared before being assigned. This test fails because `x` is never declared as type `int`.
 - `fail-if.hck`     - A string (`"hello"`) cannot evaluate to a boolean in `heckell`, and thus cannot be used in the predicate of an `if` statement.
 - `fail-string.hck` - To print a variable or literal with type `int`, use the `print` built-in function. `print_string` only prints objects with type `string`.
 
+
 ### Positive tests
-These tests compile and execute, generating the expected result.
+------------------
+These tests compile and execute, generating the expected result:
+
 - `test-add.hck`    - Here we test printing integers and evaluating binary operations, in this case addition.
 - `test-arith.hck`  - Here we test printing integers and evaluating binary operations, in this case addition, using variables.
 - `test-asn.hck`    - Here we test printing integers and storing/accessing values in variables.
@@ -73,3 +53,8 @@ These tests compile and execute, generating the expected result.
 - `test-str.hck`    - Here we test storing/accessing (`string`) values in variables, and printing strings.
 - `test-uniop.hck`  - Here we test evaluating unary operators, in this case negation, storing/accessing values in variables, and printing integers.
 - `test-while.hck`  - Here we test `while` loops, storing/accessing values in variables, evaluating binary operations, and printing integers.
+
+Below we document the positive tests demonstrating language features _not_ provided by `MicroC`:
+- `test-if3.hck`     - Demonstrates declaring variables elsewhere besides the top of a function, e.g. within an `if` statement.
+- `test-str.hck`     - Demonstrates declaration, assignment, and printing of `string`.
+- `test-while.hck`   - Demonstrates execution of code which is not enclosed in a function.
