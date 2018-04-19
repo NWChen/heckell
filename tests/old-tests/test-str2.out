@@ -1,0 +1,9 @@
+let s: string
+let x: int
+x = 4
+s = "Twice x is \( (2 * x) )"
+"s is \( s ) and x is \( x )"
+"Result \( ((4 + 4) - (3 * 2)) )"
+"Total \( (((2 * (x + 2)) + (4 / x)) - 4) )*x )"
+"Function \( (f (x, y) + x) )"
+"Nested \( ("strings" + "are \( "great" )!") )"

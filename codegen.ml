@@ -63,13 +63,17 @@ let translate (stmt_list) =
                      with Not_found -> raise (Failure "ERROR: asn not found.")
   in
   let build_statements (builder, var_map) stmt = 
-    let rec expr builder var_map (_, e) = match e with
+    let rec expr builder var_map (out_typ, e) = match e with
         SLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
+      | SFuncCall (f, e) -> (* e = a tuple (ocaml list) of args *)
+        let actuals = e in (* might need to add to this *)
+        let result = f ^ "_result" in (* name of register holding result *)
+        L.build_call f (Array.of_list actuals) result builder (* TODO *) (* `e` expected a tuple, or nothing(?) *)
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = expr builder var_map e1
