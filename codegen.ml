@@ -29,13 +29,12 @@ let translate (stmt_list) =
   let i8_t       = L.i8_type        context in
   let str_t      = L.pointer_type   i8_t    in
   let i1_t       = L.i1_type        context in
-  let arr_t      = L.pointer_type   i8_t    in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   let the_module = L.create_module context "Heckell" in
 
   (* Convert Heckell types to LLVM types *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.PrimTyp(A.Int)   -> i32_t
     | A.PrimTyp(A.Bool)  -> i1_t
     | A.String           -> str_t
@@ -108,25 +107,43 @@ let translate (stmt_list) =
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
-      | _ -> to_imp "expression builder" (* TODO: implemnet variable reference *)
+      | SArrayLit(e) -> 
+        let (t, _) = List.hd e in
+        L.const_array (ltype_of_typ t) (Array.of_list (List.map (expr builder var_map) e))
+      | _ -> to_imp "Expression not yet handled"
     in 
 
     let add_terminal builder f = match L.block_terminator (L.insertion_block builder) with
         Some _ -> ()
       | None -> ignore (f builder) in
 
+    let initialize_arr p el var_map =
+      let map_build x o =
+          let x' = expr builder var_map x in
+          let arr_ptr = L.build_gep p [| L.const_int i32_t o |]
+              "tmp" builder in
+          let _ = L.build_store x' arr_ptr builder
+          in o + 1
+      in List.fold_left (fun o e -> map_build e o) 0 el in
+
     (* match stmt with *)
     let rec stmt_builder (builder, var_map) = function 
           SExpr e -> ignore(expr builder var_map e); (builder, var_map)
         (* Handle a declaration *)
-
-        | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
-
-        | SAsn (n, sexpr) -> let addr = lookup n var_map
-                  in let e' = expr builder var_map sexpr
-                  in let _ = L.build_store e' addr builder 
-                  in (builder, var_map) (* TODO: should this really be ignored? *)
+        | SDecl (n, t) ->
+          let addr = match t with
+            | A.Array(t) -> L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 3) n builder (*TODO undo hardcode!! *)
+            | _ -> L.build_alloca (ltype_of_typ t) n builder
+          in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
+        | SAsn (n, sexpr) -> 
+            let (_, e) = sexpr in
+            let addr = lookup n var_map in
+            let _ = match e with
+              | SArrayLit(x) -> let e' = Array.of_list (List.map (expr builder var_map) x)
+                  in ignore(initialize_arr addr x var_map)
+              | _ -> let e' = expr builder var_map sexpr
+                  in ignore(L.build_store e' addr builder)
+            in (builder, var_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
