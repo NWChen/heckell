@@ -56,5 +56,5 @@ These tests compile and execute, generating the expected result:
 
 Below we document the positive tests demonstrating language features _not_ provided by `MicroC`:
 - `test-if3.hck`     - Demonstrates declaring variables elsewhere besides the top of a function, e.g. within an `if` statement.
-- `test-str.hck`     - Demonstrates declaration, assignment, and printing of `string`.
+- `test-str.hck`     - Demonstrates declaration, assignment, and printing of `string`s.
 - `test-while.hck`   - Demonstrates execution of code which is not enclosed in a function.
