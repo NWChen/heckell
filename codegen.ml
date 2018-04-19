@@ -28,6 +28,7 @@ let translate (stmt_list) =
   let i32_t      = L.i32_type       context in
   let i8_t       = L.i8_type        context in
   let str_t      = L.pointer_type   i8_t    in
+  let intp_t     = L.pointer_type   i32_t   in
   let void       = L.void_type      context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
@@ -170,14 +171,16 @@ let translate (stmt_list) =
         | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
               let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
               | [] -> raise (Failure "empty list added to set") 
-              | [ se ] -> L.build_call add_val_func 
-                          [| L.const_inttoptr (expr builder se) str_t; int_str; hset_ptr |] 
-                          "add_val" builder 
+              | [ se ] -> let val_addr = L.build_alloca i32_t "temp" builder in
+                          let _ = L.build_store (expr builder se) val_addr builder in
+                          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+                          L.build_call add_val_func [| bitcast; int_str; hset_ptr |] "add_val" builder 
               | head :: tail -> 
                     let new_hset_ptr = 
-                          L.build_call add_val_func 
-                          [| L.const_inttoptr (expr builder head) str_t; int_str; hset_ptr |] 
-                          "add_val" builder 
+                          let val_addr = L.build_alloca i32_t "temp" builder in
+                          let _ = L.build_store (expr builder head) val_addr builder in
+                          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+                          L.build_call add_val_func [| bitcast; int_str; hset_ptr |] "add_val" builder 
                     in add_list_vals tail new_hset_ptr
               in
               let addr = StringMap.find n var_map 
