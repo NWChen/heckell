@@ -63,15 +63,33 @@ let translate (stmt_list) =
                      with Not_found -> raise (Failure "ERROR: asn not found.")
   in
   let build_statements (builder, var_map) stmt = 
-    let rec expr builder var_map e = match e with
+    let rec expr builder var_map (out_typ, e) = match e with (* used to be (_, e) but we need that `out_typ` for SFuncCall *)
         SLit i -> L.const_int i32_t i
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
-      (*| SFuncCall (f, (out_typ, args)) -> (* args = e = a tuple (`sexpr list`) of args *)
-        let (out_typ, _) = e and actuals = Array.of_list (List.map (fun arg -> expr builder var_map arg) args) in
+      | SFuncCall (s, e) ->
+          (*
+        (match e with
+        | (Tuple(actual_typs), STupleLit(el)) ->
+          let actual_typs = Array.of_list (List.map (fun typ -> ltype_of_typ typ) actual_typs) in
+          let actuals = Array.of_list (List.map (fun arg -> expr builder var_map arg) el) and result = s ^ "_result" in
+          let f_typ = L.function_type (ltype_of_typ out_typ) actual_typs in
+          let f = L.define_function s (ltype_of_typ out_typ) the_module in
+          L.build_call f actuals result builder
+        | x -> 
+          let actual_typs = L.const_int i32_t 0
+*)
+        let result = s ^ "_result" and f = L.define_function s (ltype_of_typ out_typ) the_module in
+        L.build_call f (match e with
+        | (Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el) 
+        | x -> [| expr builder var_map x |]
+        ) result builder
+     (* 
+      (f, STupleLit(out_typ, e)) -> (* e = a tuple (`sexpr list`) of args *)
+        let actuals = Array.of_list (List.map (fun arg -> expr builder var_map arg) e) in
         let actual_typs = List.map (ltype_of_typ actual) actuals in
         let result = f ^ "_result" in
         let f_typ = L.function_type (ltype_of_typ out_typ) actual_typs in
