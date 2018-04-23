@@ -71,35 +71,11 @@ let translate (stmt_list) =
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall (s, e) ->
-          (*
-        (match e with
-        | (Tuple(actual_typs), STupleLit(el)) ->
-          let actual_typs = Array.of_list (List.map (fun typ -> ltype_of_typ typ) actual_typs) in
-          let actuals = Array.of_list (List.map (fun arg -> expr builder var_map arg) el) and result = s ^ "_result" in
-          let f_typ = L.function_type (ltype_of_typ out_typ) actual_typs in
-          let f = L.define_function s (ltype_of_typ out_typ) the_module in
-          L.build_call f actuals result builder
-        | x -> 
-          let actual_typs = L.const_int i32_t 0
-*)
         let result = s ^ "_result" and f = L.define_function s (ltype_of_typ out_typ) the_module in
         L.build_call f (match e with
         | (Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el) 
         | x -> [| expr builder var_map x |]
         ) result builder
-     (* 
-      (f, STupleLit(out_typ, e)) -> (* e = a tuple (`sexpr list`) of args *)
-        let actuals = Array.of_list (List.map (fun arg -> expr builder var_map arg) e) in
-        let actual_typs = List.map (ltype_of_typ actual) actuals in
-        let result = f ^ "_result" in
-        let f_typ = L.function_type (ltype_of_typ out_typ) actual_typs in
-
-        (*let actuals = List.fold_left (snd e) in (* might need to add to this *)
-        let result = f ^ "_result" in (* name of register holding result *)
-        let actual_typs = Array.of_list (List.fold_left (fun acc ret -> (fst ret) :: acc) [] actuals) in
-        let f_typ = L.function_type (ltype_of_typ out_typ) actual_typs in*)
-        let f = L.define_function f (ltype_of_typ out_typ) the_module in
-        L.build_call f (Array.of_list actuals) result builder (* TODO *) (* `e` expected a tuple, or nothing(?) *)*)
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = expr builder var_map e1
