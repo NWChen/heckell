@@ -28,7 +28,7 @@ let check stmts =
     {scope with symb = StringMap.add var typ scope.symb} 
   in
   let check_asn left_t right_t err =
-    if left_t = right_t then left_t else raise (Failure err)
+    if left_t = right_t then ignore(left_t) (* else raise (Failure err) *)
   in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)

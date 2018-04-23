@@ -40,7 +40,7 @@ let translate (stmt_list) =
   let ltype_of_typ = function
       A.PrimTyp(A.Int)  -> i32_t
     | A.PrimTyp(A.Char) -> i8_t
-    | A.PrimTyp(A.Bool) -> i8_t
+    | A.PrimTyp(A.Bool) -> i1_t
     | A.PrimTyp(A.Real) -> i32_t
     | A.String          -> str_t
     | A.Set(_)          -> str_t
@@ -180,9 +180,9 @@ let translate (stmt_list) =
         | SDecl (n, A.Set(t)) ->
               (* addr should be return value of init_hset *)
               let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder
-              and addr = L.build_alloca str_t n builder in raise (Failure ("type is " ^ (string_of_typ t)))
+              and addr = L.build_alloca str_t n builder
               (* throws error if build_store in add vs ignore(build_store) ; add? *)
-              (* in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map  *)
+              in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map 
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
               in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
         | SAsn (n, (A.Set(t), SSetLit(sl))) -> 
