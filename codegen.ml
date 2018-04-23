@@ -27,6 +27,8 @@ let translate (stmt_list) =
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type       context in
   let i8_t       = L.i8_type        context in
+  let i1_t       = L.i1_type        context in
+  let f32_t      = L.float_type     context in
   let str_t      = L.pointer_type   i8_t    in
   let intp_t     = L.pointer_type   i32_t   in
   let void       = L.void_type      context in
@@ -36,9 +38,12 @@ let translate (stmt_list) =
 
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
-      A.PrimTyp(A.Int) -> i32_t
-    | A.String         -> str_t
-    | A.Set(_)         -> str_t
+      A.PrimTyp(A.Int)  -> i32_t
+    | A.PrimTyp(A.Char) -> i8_t
+    | A.PrimTyp(A.Bool) -> i8_t
+    | A.PrimTyp(A.Real) -> i32_t
+    | A.String          -> str_t
+    | A.Set(_)          -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -97,6 +102,15 @@ let translate (stmt_list) =
   and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
   and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
   and int_str             = L.build_global_stringptr "Int"  "int" builder
+  and real_str            = L.build_global_stringptr "Real" "real" builder
+  and bool_str            = L.build_global_stringptr "Bool" "bool" builder
+  and char_str            = L.build_global_stringptr "Char" "char" builder
+  in
+  let strtype_of_typ = function
+      A.PrimTyp(A.Int)  -> int_str
+    | A.PrimTyp(A.Char) -> char_str
+    | A.PrimTyp(A.Bool) -> bool_str
+    | A.PrimTyp(A.Real) -> real_str
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> to_imp "ERROR: asn not found."
@@ -104,6 +118,9 @@ let translate (stmt_list) =
   let build_statements var_map stmt = 
     let rec expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
+      | SCharLit c -> L.const_int i8_t (Char.code c)
+      | SBoolLit b -> L.const_int i1_t 1
+      | SRealLit r -> L.const_float f32_t r
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
@@ -160,27 +177,27 @@ let translate (stmt_list) =
     match stmt with
         | SExpr e -> ignore(expr builder e); var_map
         (* Handle a declaration *)
-        | SDecl (n, A.Set(_)) ->
+        | SDecl (n, A.Set(t)) ->
               (* addr should be return value of init_hset *)
               let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder
-              and addr = L.build_alloca str_t n builder 
+              and addr = L.build_alloca str_t n builder in raise (Failure ("type is " ^ (string_of_typ t)))
               (* throws error if build_store in add vs ignore(build_store) ; add? *)
-              in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map 
+              (* in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map  *)
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
               in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
-        | SAsn (n, (A.Set(_), SSetLit(sl))) -> 
+        | SAsn (n, (A.Set(t), SSetLit(sl))) -> 
               let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
               | [] -> raise (Failure "empty list added to set") 
-              | [ se ] -> let val_addr = L.build_alloca i32_t "temp" builder in
+              | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
                           let _ = L.build_store (expr builder se) val_addr builder in
                           let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
-                          L.build_call add_val_func [| bitcast; int_str; hset_ptr |] "add_val" builder 
+                          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
               | head :: tail -> 
                     let new_hset_ptr = 
-                          let val_addr = L.build_alloca i32_t "temp" builder in
+                          let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
                           let _ = L.build_store (expr builder head) val_addr builder in
                           let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
-                          L.build_call add_val_func [| bitcast; int_str; hset_ptr |] "add_val" builder 
+                          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
                     in add_list_vals tail new_hset_ptr
               in
               let addr = StringMap.find n var_map 
