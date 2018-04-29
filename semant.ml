@@ -98,7 +98,7 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Set(arr_t), SArrayLit (sexpr_list))
       )
-    | FuncDefNamed(f, al, sl) -> (
+    | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with
       | Func(in_t, out_t) ->
@@ -134,6 +134,11 @@ let check stmts =
     | _ -> raise (Failure ("not matched"))
   
   and check_stmt to_check symbols = 
+    let check_bool_expr e = 
+      let (t', e') = expr e symbols
+      and err = "expected Boolean expression in " ^ string_of_expr e
+      in if t' != PrimTyp(Bool) then raise (Failure err) else (t', e') 
+    in
     match to_check with
     | [] -> symbols
     | stmt :: tail -> match stmt with
@@ -149,19 +154,30 @@ let check stmts =
         let (et, se) = expr e symbols in
         check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
+      | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
+      | While(p, s) -> check_bool_expr p; check_stmt s symbols
+
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(var, e) -> (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
-      | Decl(var, tp) -> 
+      | Asn(var, e) ->
+        (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+      | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(var, e) -> 
+      | AsnDecl(var, e) ->
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
-        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t) )
+        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+      | If(p, b1, b2) -> 
+        let (tp, se) = expr p symbols in
+        SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
+      | While(p, s) -> 
+        let (tp, se) = expr p symbols in
+        SWhile((tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
+    )
     | [] -> []
   in
   let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
@@ -170,3 +186,4 @@ let check stmts =
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
   in append_sstmt symbols stmts
+
