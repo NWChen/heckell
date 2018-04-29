@@ -190,20 +190,8 @@ let translate (stmt_list) =
     match stmt with
         | SExpr e -> ignore(expr builder e); var_map
         (* Handle a declaration *)
-        | SDecl (n, A.Set(t)) ->
-              (* addr should be return value of init_hset *)
-              let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder
-              and addr = L.build_alloca str_t n builder
-              (* throws error if build_store in add vs ignore(build_store) ; add? *)
-              in ignore(L.build_store hset_ptr addr builder); StringMap.add n addr var_map 
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
               in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
-        | SAsn (n, (A.Set(t), SSetLit(sl))) -> 
-              let addr = StringMap.find n var_map 
-              in let curr_hset_ptr = L.build_load addr "hset_ptr" builder 
-              in let final_hset_ptr = add_list_vals sl t curr_hset_ptr 
-              in ignore(L.build_store final_hset_ptr addr builder); var_map
-        (* add val one by one and replace addr in var_map with new set *)
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map 
                   in let e' = expr builder sexpr 
                   in ignore(L.build_store e' addr builder); var_map (* TODO: should this really be ignored? *)

@@ -50,8 +50,8 @@ char *string_of(void *val, char *typ) {
 	} else if (mystrcmp(typ, types[CHAR])) {
 		key = malloc(sizeof(char)*4);
 		snprintf(key, sizeof(char)*4, "%c", *(char *)val);
-		fprintf(stderr, "string_of, int type\n");
-		fprintf(stderr, "string_of, write %d to key\n", *(int *)val);
+		//fprintf(stderr, "string_of, int type\n");
+		//fprintf(stderr, "string_of, write %d to key\n", *(int *)val);
 
 	} else if (mystrcmp(typ, types[BOOL])) {
 		key = malloc(sizeof(char)*6);
@@ -104,8 +104,8 @@ void *alloc_copy(void *val_p, char *typ) {
 	} 
 	else if (mystrcmp(typ, "Char")) {
 		new_val_p = malloc(sizeof(char));
-		fprintf(stderr, "alloc_copy, memcpy from %p\n", val_p);
-		fprintf(stderr, "alloc_copy, memcpy %c\n", *(char *)val_p);
+		//fprintf(stderr, "alloc_copy, memcpy from %p\n", val_p);
+		//fprintf(stderr, "alloc_copy, memcpy %c\n", *(char *)val_p);
 		memcpy(new_val_p, val_p, sizeof(char));
 	} 
 	else { // bool type
@@ -122,7 +122,7 @@ struct hset_head *_add_val(char *val_ts, void *val_p,
 	struct hset_head *hset_new = init_hset();
 	struct hset_head *curr, *copied, *temp;
 	void *new_val_p, *new_val_ts;
-	fprintf(stderr, "_add_val, copy to new hashset");
+	//fprintf(stderr, "_add_val, copy to new hashset\n");
 	HASH_ITER(hh, hash_set, curr, temp) {
 		copied = malloc(sizeof(struct hset_head));
 		new_val_p = alloc_copy(curr->val_p, typ);
@@ -134,13 +134,13 @@ struct hset_head *_add_val(char *val_ts, void *val_p,
 
 	HASH_FIND(hh, hset_new, val_ts, strlen(val_ts), temp);
 	if (temp == NULL) {
-		fprintf(stderr, "_add_val, key does not exist");
+		//fprintf(stderr, "_add_val, key does not exist\n");
 		temp = malloc(sizeof(struct hset_head));
 		new_val_p = alloc_copy(val_p, typ);
 		temp->val_ts = val_ts;
 		temp->val_p = new_val_p;
 		HASH_ADD_KEYPTR(hh, hset_new, (temp->val_ts), strlen(temp->val_ts), temp);
-		fprintf(stderr, "_add_val, key %s added\n", val_ts);
+		//fprintf(stderr, "_add_val, key %s added\n", val_ts);
 	}
 	return hset_new;
 }
