@@ -135,16 +135,15 @@ let translate (stmt_list) =
       | SCharLit c -> L.const_int i8_t (Char.code c)
       | SBoolLit b -> L.const_int i1_t 1
       | SRealLit r -> L.const_float f32_t r
+      | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
+          in add_list_vals sl (fst (List.hd sl)) hset_ptr  
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> 
         L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder e) |] "printf" builder
       | SFuncCall ("print_set", e) -> match snd e with
-          | SSetLit(sl) -> 
-              L.build_call printf_func [| setl_format_str |] "printf" builder;
-              List.iter (fun e -> ignore(L.build_call printf_func [| set_int_format_str ; (expr builder e) |] "printf" builder)) sl;
-              L.build_call printf_func [| setr_format_str |] "printf" builder
+          | SSetLit(sl) -> L.build_call print_hset_func [| (expr builder e) |] "" builder
           | SId(n) -> let addr = lookup n var_map in 
               let hset_ptr = L.build_load addr "var_ptr" builder 
               in L.build_call print_hset_func [| hset_ptr |] "" builder
