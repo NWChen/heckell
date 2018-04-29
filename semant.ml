@@ -27,8 +27,10 @@ let check stmts =
   let add_to_scope var typ scope = 
     {scope with symb = StringMap.add var typ scope.symb} 
   in
-  let check_asn left_t right_t err =
-    if left_t = right_t then ignore(left_t) (* else raise (Failure err) *)
+  let check_asn left_t right_t err = match right_t with
+    | PrimTyp(Char) | Set(PrimTyp(Char)) | PrimTyp(Bool) | Set(PrimTyp(Bool)) 
+          -> if left_t = PrimTyp(Int) then ignore(left_t)
+    | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)

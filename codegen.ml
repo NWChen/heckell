@@ -41,7 +41,7 @@ let translate (stmt_list) =
       A.PrimTyp(A.Int)  -> i32_t
     | A.PrimTyp(A.Char) -> i8_t
     | A.PrimTyp(A.Bool) -> i1_t
-    | A.PrimTyp(A.Real) -> i32_t
+    | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
     | A.Set(_)          -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
@@ -95,6 +95,7 @@ let translate (stmt_list) =
   (* Create an Instruction Builder, which points into a basic block
     and determines where the next instruction should be placed *)
   let builder = L.builder_at_end context (L.entry_block the_function) in
+
   (* Create a pointer to a format string for printf *)
   let int_format_str      = L.build_global_stringptr "%d\n" "fmt" builder 
   and str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
@@ -116,7 +117,20 @@ let translate (stmt_list) =
                      with Not_found -> to_imp "ERROR: asn not found."
   in
   let build_statements var_map stmt = 
-    let rec expr builder (_, e) = match e with
+    let rec add_list_vals (slist: sexpr list) t hset_ptr = match slist with
+      | [] -> raise (Failure "empty list added to set") 
+      | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+          let _ = L.build_store (expr builder se) val_addr builder in
+          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
+      | head :: tail -> 
+          let new_hset_ptr = 
+            let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+            let _ = L.build_store (expr builder head) val_addr builder in
+            let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+            L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
+          in add_list_vals tail t new_hset_ptr 
+    and expr builder (_, e) = match e with
         SLit i -> L.const_int i32_t i (* Generate a constant integer *)
       | SCharLit c -> L.const_int i8_t (Char.code c)
       | SBoolLit b -> L.const_int i1_t 1
@@ -186,23 +200,9 @@ let translate (stmt_list) =
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
               in StringMap.add n addr var_map (* TODO DONT IGNORE THIS *)
         | SAsn (n, (A.Set(t), SSetLit(sl))) -> 
-              let rec add_list_vals (slist: sexpr list) hset_ptr = match slist with
-              | [] -> raise (Failure "empty list added to set") 
-              | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
-                          let _ = L.build_store (expr builder se) val_addr builder in
-                          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
-                          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
-              | head :: tail -> 
-                    let new_hset_ptr = 
-                          let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
-                          let _ = L.build_store (expr builder head) val_addr builder in
-                          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
-                          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
-                    in add_list_vals tail new_hset_ptr
-              in
               let addr = StringMap.find n var_map 
               in let curr_hset_ptr = L.build_load addr "hset_ptr" builder 
-              in let final_hset_ptr = add_list_vals sl curr_hset_ptr 
+              in let final_hset_ptr = add_list_vals sl t curr_hset_ptr 
               in ignore(L.build_store final_hset_ptr addr builder); var_map
         (* add val one by one and replace addr in var_map with new set *)
         | SAsn (n, sexpr) -> let addr = StringMap.find n var_map 
