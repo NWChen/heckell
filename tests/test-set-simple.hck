@@ -1,5 +1,0 @@
-let S1 : char set;
-S1 = { 'c', 'h', 'a', 'n' };
-print_set(S1);
-
-print_set({1,2,4,4});
