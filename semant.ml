@@ -28,7 +28,7 @@ let check stmts =
     {scope with symb = StringMap.add var typ scope.symb} 
   in
   let check_asn left_t right_t err = match right_t with
-    | PrimTyp(Char) | Set(PrimTyp(Char)) | PrimTyp(Bool) | Set(PrimTyp(Bool)) 
+    | Set(PrimTyp(Char)) | Set(PrimTyp(Bool)) | Set(PrimTyp(Real))
           -> if left_t = PrimTyp(Int) then ignore(left_t)
     | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 

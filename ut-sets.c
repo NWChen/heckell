@@ -45,7 +45,9 @@ char *string_of(void *val, char *typ) {
 		snprintf(key, sizeof(char)*12, "%d", *(int *)val);
 	} else if (mystrcmp(typ, types[REAL])) {
 		key = malloc(sizeof(char)*100);
-		snprintf(key, sizeof(char)*100, "%g", *(double *)val);
+		//fprintf(stderr, "string_of, real type\n");
+		//fprintf(stderr, "string_of, write %f to key\n", *(float *)val);
+		snprintf(key, sizeof(char)*100, "%f", *(float *)val);
 
 	} else if (mystrcmp(typ, types[CHAR])) {
 		key = malloc(sizeof(char)*4);
