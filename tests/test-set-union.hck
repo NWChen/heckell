@@ -1,5 +1,5 @@
 let S1 : int set;
-S1 = { 1, 2, 2 };
+S1 = { 1, 2, 2, 9 };
 
 let S2 : int set;
 S2 = { 2, 8, 9 };
@@ -11,3 +11,7 @@ print_set(S3);
 let S4 : int set;
 S4 = S2 - S1;
 print_set(S4);
+
+let S5 : int set;
+S5 = S1 * S2;
+print_set(S5);

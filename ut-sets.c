@@ -226,3 +226,14 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	}
 	return hset_new;
 }
+
+struct hset_head *hset_intersect(struct hset_head *left, struct hset_head *right, char *typ) {
+	struct hset_head *hset_new = init_hset();
+	struct hset_head *curr, *temp, *match;
+	HASH_ITER(hh, right, curr, temp) {
+		HASH_FIND(hh, left, curr->val_ts, strlen(curr->val_ts), match);
+		if (match != NULL)
+			hset_new = _add_val(curr->val_ts, curr->val_p, typ, hset_new);
+	}
+	return hset_new;
+}

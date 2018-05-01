@@ -87,6 +87,11 @@ let translate (stmt_list) =
   let hset_diff_func : L.llvalue =
       L.declare_function "hset_diff" hset_diff_t the_module in
 
+  let hset_intersect_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let hset_intersect_func : L.llvalue =
+      L.declare_function "hset_intersect" hset_intersect_t the_module in
+
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
       L.var_arg_function_type void [| str_t |] in
@@ -162,6 +167,7 @@ let translate (stmt_list) =
         else if t = A.Set(A.PrimTyp(A.Int)) then match op with
           A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder 
         | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
+        | A.Mul     -> L.build_call hset_intersect_func [| e1' ; e2' ; int_str |] "hset_intersect" builder 
         else (match op with
         | A.Add     -> L.build_add
         | A.Sub     -> L.build_sub
