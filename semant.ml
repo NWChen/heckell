@@ -45,7 +45,8 @@ let check stmts =
       let ty = match op with
         Add | Sub | Mul | Div when same && t1 = PrimTyp(Int)  -> PrimTyp(Int)
       | Add | Sub | Mul | Div when same && t1 = PrimTyp(Real) -> PrimTyp(Real)
-      | Equal | Neq            when same              -> PrimTyp(Bool)
+      | Add | Sub | Mul | Div when same && t1 = Set(PrimTyp(Int)) -> Set(PrimTyp(Int))
+      | Equal | Neq           when same              -> PrimTyp(Bool)
       | Less | Leq | Greater | Geq
                  when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
       | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)

@@ -77,6 +77,16 @@ let translate (stmt_list) =
   let del_val_func : L.llvalue =
       L.declare_function "del_val" del_val_t the_module in
 
+  let hset_union_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let hset_union_func : L.llvalue =
+      L.declare_function "hset_union" hset_union_t the_module in
+
+  let hset_diff_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let hset_diff_func : L.llvalue =
+      L.declare_function "hset_diff" hset_diff_t the_module in
+
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
       L.var_arg_function_type void [| str_t |] in
@@ -148,7 +158,10 @@ let translate (stmt_list) =
         | A.Geq     -> L.build_fcmp L.Fcmp.Oge
         | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
         | _         -> to_imp "Binop not yet implemented"
-        ) e1' e2' "tmp" builder 
+        ) e1' e2' "tmp" builder
+        else if t = A.Set(A.PrimTyp(A.Int)) then match op with
+          A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder 
+        | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
         else (match op with
         | A.Add     -> L.build_add
         | A.Sub     -> L.build_sub
@@ -183,6 +196,19 @@ let translate (stmt_list) =
             let _ = L.build_store (expr builder var_map head) val_addr builder in
             let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
             L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
+          in add_list_vals tail t new_hset_ptr 
+    and del_list_vals (slist: sexpr list) t hset_ptr = match slist with
+      | [] -> raise (Failure "empty list subtracted from set") 
+      | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+          let _ = L.build_store (expr builder var_map se) val_addr builder in
+          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+          L.build_call del_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "del_val" builder 
+      | head :: tail -> 
+          let new_hset_ptr = 
+            let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+            let _ = L.build_store (expr builder var_map head) val_addr builder in
+            let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+            L.build_call del_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "del_val" builder 
           in add_list_vals tail t new_hset_ptr 
     in 
 
