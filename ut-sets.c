@@ -203,7 +203,6 @@ struct hset_head *del_val(void *val, char *typ, struct hset_head *hash_set) {
 	return temp;
 }
 
-
 struct hset_head *hset_union(struct hset_head *left, struct hset_head *right, char *typ) {
 	struct hset_head *hset_new = copy_hset(left, typ);
 	//fprintf(stderr, "in union, copied: ");
@@ -223,7 +222,7 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	struct hset_head *hset_new = copy_hset(left, typ);
 	struct hset_head *curr, *temp;
 	HASH_ITER(hh, right, curr, temp) {
-		_del_val(curr->val_ts, typ, hset_new);
+		hset_new = _del_val(curr->val_ts, typ, hset_new);	
 	}
 	return hset_new;
 }

@@ -223,7 +223,9 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	struct hset_head *hset_new = copy_hset(left, typ);
 	struct hset_head *curr, *temp;
 	HASH_ITER(hh, right, curr, temp) {
-		_del_val(curr->val_ts, typ, hset_new);
+		fprintf(stderr, "curr val: %s, ", curr->val_ts);	
+		print_hset(hset_new);
+		hset_new = _del_val(curr->val_ts, typ, hset_new);	
 	}
 	return hset_new;
 }
@@ -240,25 +242,30 @@ int main() {
 	printf("A: ");
 	print_hset(hsetA3);
 	struct hset_head *hsetB1 = init_hset();
-	struct hset_head *hsetB2 = add_val((void *)&ten, "int", hsetB1);
+	struct hset_head *hsetB2 = add_val((void *)&four, "int", hsetB1);
 	struct hset_head *hsetB3 = add_val((void *)&eight, "int", hsetB2);
-	struct hset_head *hsetB4 = add_val((void *)&four, "int", hsetB3);
+	// struct hset_head *hsetB4 = add_val((void *)&ten, "int", hsetB3);
 	printf("B: ");
-	print_hset(hsetB4);
-	struct hset_head *hset6 = hset_union(hsetA3, hsetB4, "int");
-	printf("A + B: ");
-	print_hset(hset6);
-	struct hset_head *hset7 = hset_diff(hsetB4, hsetA3, "int");
-	printf("B - A: ");
+	print_hset(hsetB3);
+	// struct hset_head *hset6 = hset_union(hsetA3, hsetB4, "int");
+	// printf("A + B: ");
+	// print_hset(hset6);
+	
+	struct hset_head *hset7 = hset_diff(hsetB3, hsetA3, "int");
+	//hsetB3 = _del_val("4", "int", hsetB3);
+	//printf("B - 4: ");
+	//print_hset(hsetB3);
+	//hsetB3 = _del_val("0", "int", hsetB3);
+	//printf("B - 0: ");
 	print_hset(hset7);
-	destroy_hset(hsetA1);
-	destroy_hset(hsetA2);
-	destroy_hset(hsetA3);
-	destroy_hset(hsetB1);
-	destroy_hset(hsetB2);
-	destroy_hset(hsetB3);
-	destroy_hset(hset6);
-	destroy_hset(hset7);
+	// destroy_hset(hsetA1);
+	// destroy_hset(hsetA2);
+	// destroy_hset(hsetA3);
+	// destroy_hset(hsetB1);
+	// destroy_hset(hsetB2);
+	// destroy_hset(hsetB3);
+	// destroy_hset(hset6);
+	// destroy_hset(hset7);
 
 	return 0;
 }
