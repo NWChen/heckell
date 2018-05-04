@@ -32,14 +32,15 @@ type expr =
   | ArrayRange of expr * expr option * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
+  | CollAccessor of expr * expr
   | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)
   | FuncCall of string * expr
   (* | Seq of expr * expr  *)
 
 and stmt =
-  | Asn of string * expr
+  | Asn of string list * expr
   | Decl of string * typ
-  | AsnDecl of string * expr
+  | AsnDecl of string list * expr
   | Expr of expr
   | Iter of string list * expr
   | If of expr * stmt list * stmt list

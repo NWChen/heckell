@@ -97,8 +97,27 @@ let check stmts =
       in (
         match is_valid with
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
-        | true -> (Set(arr_t), SArrayLit (sexpr_list))
+        | true -> (Array(arr_t), SArrayLit (sexpr_list))
       )
+    | CollAccessor(e1, e2) ->
+      let (e1_t, se1) = expr e1 scope in
+      let (e2_t, se2) = expr e2 scope in (
+      match e2_t with
+      | PrimTyp(Int) -> (
+        match e1_t with
+        | Tuple(tup_ts) -> (
+          match e2 with
+          | Lit(i) -> 
+            if i >= 0 && i < List.length tup_ts then 
+              (List.nth tup_ts i, SCollAccessor((e1_t, se1), (e2_t, se2)))
+            else raise(Failure("tuple index out of range"))
+          | _ -> raise(Failure("can only index tuple with int literals"))
+        ) 
+        | Array(arr_t) -> (arr_t, SCollAccessor((e1_t, se1), (e2_t, se2)))
+        | _ -> raise(Failure("cannot index object of type " ^ string_of_typ  e1_t)) 
+      )
+      | _ -> raise(Failure("need int to index collection"))
+    )
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with
@@ -144,14 +163,16 @@ let check stmts =
     | [] -> symbols
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
-      | Asn(var, e) as st ->
+      | Asn(vars, e) as st ->
+        let var = List.hd vars in (* TODO: Remove *)
         let left_t = type_of_identifier var symbols
         and (right_t, e') = expr e symbols in
         let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
           string_of_typ right_t ^ " in " ^ string_of_stmt st
         in let _ = check_asn left_t right_t err 
         in check_stmt tail symbols
-      | AsnDecl(var, e) -> 
+      | AsnDecl(vars, e) -> 
+        let var = List.hd vars in (* TODO: Remove *)
         let (et, se) = expr e symbols in
         check_stmt tail (add_to_scope var et symbols)
       | Expr e -> check_stmt tail symbols  
@@ -163,12 +184,14 @@ let check stmts =
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(var, e) ->
+      | Asn(vars, e) ->
+        let var = List.hd vars in (* TODO: Remove *)
         (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
       | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(var, e) ->
+      | AsnDecl(vars, e) ->
+        let var = List.hd vars in (* TODO: Remove *)
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)

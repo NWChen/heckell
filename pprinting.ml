@@ -75,14 +75,15 @@ let rec string_of_expr = function
                   ^ " | " ^ string_of_stmt s 
                   ^ ", " ^ string_of_expr e2 ^ "}"
     )
+  | CollAccessor(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
 
 and string_of_stmt = function
-    Asn(s, e) -> s ^ " = " ^ string_of_expr e
+    Asn(sl, e) -> (String.concat "," sl) ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
-  | AsnDecl(s, e) -> "let " ^ s ^ " = " ^ string_of_expr e
+  | AsnDecl(sl, e) -> "let " ^ (String.concat "," sl) ^ " = " ^ string_of_expr e
   | Expr(e) -> string_of_expr e
   | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
   | If(e, stmts, stmts2) -> "if " ^ (string_of_expr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts))) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts2)))
@@ -134,6 +135,7 @@ let rec string_of_sexpr (t, e) =
                   ^ " | " ^ string_of_sstmt s 
                   ^ ", " ^ string_of_sexpr e2 ^ "}"
     )
+  | SCollAccessor(e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]"
   | SFuncDef(formals, stmts) ->
       "(\n    " ^ (String.concat ";\n    " (List.map string_of_sstmt (formals@stmts))) ^ "\n  )"
   ) ^ " : " ^ (string_of_typ t) ^ ")"

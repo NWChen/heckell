@@ -110,6 +110,8 @@ expr:
 | expr AND    expr      { Binop($1, And, $3) }
 | expr OR     expr      { Binop($1, Or, $3) }
 | expr IN     expr      { Binop($1, Member, $3) }
+| expr LBRACKET expr RBRACKET
+                        { CollAccessor($1, $3) }
 | ID single_or_tuple    { FuncCall($1, $2) }
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
@@ -165,19 +167,38 @@ single_or_tuple:
 
 
 stmt:
-| expr SEMI                { Expr($1) }
-| ID EQUAL expr SEMI       { Asn($1, $3) }
-| LET ID COLON typ SEMI    { Decl($2, $4) }  /* binding of variables and functions */
-| LET ID EQUAL expr SEMI   { AsnDecl($2, $4) }
+| expr SEMI                 { Expr($1) }
+| ID EQUAL expr SEMI        { Asn([$1], $3) }
+| LET ID COLON typ SEMI     { Decl($2, $4) }  /* binding of variables and functions */
+| LET ID EQUAL expr SEMI    { AsnDecl([$2], $4) }
+| LET single_or_tuple EQUAL expr SEMI 
+                            { let get_id id = match id with
+                                | Id(s) -> s
+                                | _  -> raise(Failure("Can't assign to non-id"))
+                              in let ids = match $2 with
+                                | TupleLit(l) -> List.map get_id l
+                                | e -> [get_id e]
+                              in AsnDecl(ids, $4) 
+                            }
+| single_or_tuple EQUAL expr SEMI 
+                            { let get_id id = match id with
+                                | Id(s) -> s
+                                | _  -> raise(Failure("Can't assign to non-id"))
+                              in let ids = match $1 with
+                                | TupleLit(l) -> List.map get_id l
+                                | e -> [get_id e]
+                              in Asn(ids, $3) 
+                            }
 | ID LPAREN expr_list_ne RPAREN EQUAL func_stmt_list END
-                           { Asn($1, FuncDefNamed($1, 
-                            (let check_id e = 
-                              match e with
-                              | Id(s) -> s
-                              | _ -> raise(Failure("wrong function formals"))
-                            in let formals = List.map check_id $3
-                            in List.rev formals),
-                            List.rev $6)) }
+                            { Asn([$1], FuncDefNamed($1, 
+                              (let check_id e = 
+                                match e with
+                                | Id(s) -> s
+                                | _ -> raise(Failure("wrong function formals"))
+                              in let formals = List.map check_id $3
+                              in List.rev formals),
+                              List.rev $6)) 
+                            }
 | IF expr THEN stmt_list ELSE stmt_list END   { If($2, List.rev $4, List.rev $6) }
 | WHILE expr DO stmt_list END { While($2, List.rev $4) }
 
