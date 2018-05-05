@@ -173,7 +173,7 @@ let check stmts =
           | [var] -> check_asn_elem var (fst (expr e symbols))
           | _ -> match fst (expr e symbols) with
             | Tuple(typs) -> List.iter2 check_asn_elem vars typs
-            | _ -> raise(Failure "scanner should not have allowed simultaneous asn with non-tuple")
+            | _ -> raise(Failure "cannot assign multiple vars with non-tuple")
         in check_stmt tail symbols
       | AsnDecl(vars, e) -> (
         match vars with
@@ -184,9 +184,12 @@ let check stmts =
           let (et, _) = expr e symbols in
           match et with
           | Tuple(typs) -> 
-            let symbols' = List.fold_left2 (fun s v t -> add_to_scope v t s) symbols vars typs in
+            let symbols' = 
+              try List.fold_left2 (fun s v t -> add_to_scope v t s) symbols vars typs 
+              with Invalid_argument(_) -> raise(Failure "vars and tuple typs should be of same length")
+            in
             check_stmt tail symbols'
-          | _ -> raise(Failure "scanner should not have allowed simultaneous asn with non-tuple")
+          | _ -> raise(Failure "cannot assign multiple vars with non-tuple")
         )
       | Expr e -> check_stmt tail symbols  
       (* TODO: need to create new scope for if and while *)
@@ -198,10 +201,9 @@ let check stmts =
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(vars, e) ->
-        let (et, se) = expr e symbols in (
+      | Asn(vars, e) -> (
         match vars with 
-        | [var] -> (SAsn (var, (et, se) )) :: (append_sstmt symbols t)
+        | [var] -> (SAsn (var, expr e symbols )) :: (append_sstmt symbols t)
         | _ ->
           let rec expand_asn vars i = 
             let acc = AggAccessor(e, Lit(i)) in
@@ -213,11 +215,30 @@ let check stmts =
       | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(vars, e) ->
-        let var = List.hd vars in (* TODO: Remove *)
-        let (tp, se) = expr e symbols in
-        let symbols' = add_to_scope var tp symbols in
-        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+      | AsnDecl(vars, e) -> (
+        match vars with 
+        | [var] -> 
+          let (tp, se) = expr e symbols in
+          let symbols' = add_to_scope var tp symbols in
+          (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+        | _ ->
+          let (tp, _) = expr e symbols in
+          let typs = match tp with
+            | Tuple(typs) -> typs
+            | _ -> raise(Failure "check_stmt should have raised exception with non-tuple")
+          in
+          let asn = Asn(vars, e) in
+          let rec expand_decl vars typs = 
+            match (vars, typs) with
+            | [var], [typ] -> 
+              let symbols' = add_to_scope var typ symbols in
+              (SDecl (var, typ)) :: (append_sstmt symbols' (asn::t))
+            | var::vtl, typ::ttl -> 
+              let symbols' = add_to_scope var typ symbols in
+              (SDecl (var, typ)) :: (expand_decl vtl ttl)
+            | _ -> raise(Failure "vars and tuple typs should be of same length")
+          in expand_decl vars typs
+        )
       (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
