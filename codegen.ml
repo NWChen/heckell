@@ -38,13 +38,15 @@ let translate (stmt_list) =
   let the_module = L.create_module context "Heckell" in
 
   (* Convert Heckell types to LLVM types *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.PrimTyp(A.Int)  -> i32_t
     | A.PrimTyp(A.Char) -> i8_t
     | A.PrimTyp(A.Bool) -> i1_t
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
     | A.Set(_)          -> str_t
+    | A.Tuple(typs)     -> 
+      L.pointer_type (L.struct_type context (Array.of_list (List.map ltype_of_typ typs)))
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -129,7 +131,7 @@ let translate (stmt_list) =
   in
 
   let build_statements (builder, var_map) stmt = 
-    let rec expr builder var_map (_, e) = match e with
+    let rec expr builder var_map (typ, e) = match e with
         SLit i -> L.const_int i32_t i
       | SCharLit c -> L.const_int i8_t (Char.code c)
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
@@ -183,6 +185,26 @@ let translate (stmt_list) =
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
+      | STupleLit(sel) ->
+        let llvals = List.map (expr builder var_map) sel in
+        let tup_addr = L.build_alloca (L.element_type (ltype_of_typ typ)) "temp" builder in
+        let store_val i v = 
+          let gep_ptr = L.build_struct_gep tup_addr i "" builder in
+          ignore(L.build_store v gep_ptr builder)
+        in
+        List.iteri store_val llvals; tup_addr
+      | SCollAccessor(e1, e2) -> (
+        let llptr = expr builder var_map e1 in
+        match fst e1 with
+        | A.Tuple(_) -> (
+          match snd e2 with
+          | SLit(i) -> 
+            let gep_ptr = L.build_struct_gep llptr i "" builder in
+            L.build_load gep_ptr "" builder
+          | _ -> raise(Failure "semant shouldn't have allowed non-literal int index for tuple") 
+          )
+        | A.Array(_) -> to_imp "Array indexing"
+        )
       | _ -> to_imp "expression builder" (* TODO: implemnet variable reference *)
     and add_list_vals (slist: sexpr list) t hset_ptr = match slist with
       | [] -> raise (Failure "empty list added to set") 
