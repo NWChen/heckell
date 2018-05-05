@@ -193,7 +193,7 @@ let translate (stmt_list) =
           ignore(L.build_store v gep_ptr builder)
         in
         List.iteri store_val llvals; tup_addr
-      | SCollAccessor(e1, e2) -> (
+      | SAggAccessor(e1, e2) -> (
         let llptr = expr builder var_map e1 in
         match fst e1 with
         | A.Tuple(_) -> (

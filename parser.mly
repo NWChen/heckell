@@ -111,7 +111,7 @@ expr:
 | expr OR     expr      { Binop($1, Or, $3) }
 | expr IN     expr      { Binop($1, Member, $3) }
 | expr LBRACKET expr RBRACKET
-                        { CollAccessor($1, $3) }
+                        { AggAccessor($1, $3) }
 | ID single_or_tuple    { FuncCall($1, $2) }
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }

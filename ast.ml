@@ -32,7 +32,7 @@ type expr =
   | ArrayRange of expr * expr option * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
-  | CollAccessor of expr * expr
+  | AggAccessor of expr * expr
   | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)
   | FuncCall of string * expr
   (* | Seq of expr * expr  *)

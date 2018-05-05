@@ -99,7 +99,7 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Array(arr_t), SArrayLit (sexpr_list))
       )
-    | CollAccessor(e1, e2) ->
+    | AggAccessor(e1, e2) ->
       let (e1_t, se1) = expr e1 scope in
       let (e2_t, se2) = expr e2 scope in (
       match e2_t with
@@ -109,11 +109,11 @@ let check stmts =
           match e2 with
           | Lit(i) -> 
             if i >= 0 && i < List.length tup_ts then 
-              (List.nth tup_ts i, SCollAccessor((e1_t, se1), (e2_t, se2)))
+              (List.nth tup_ts i, SAggAccessor((e1_t, se1), (e2_t, se2)))
             else raise(Failure("tuple index out of range"))
           | _ -> raise(Failure("can only index tuple with int literals"))
         ) 
-        | Array(arr_t) -> (arr_t, SCollAccessor((e1_t, se1), (e2_t, se2)))
+        | Array(arr_t) -> (arr_t, SAggAccessor((e1_t, se1), (e2_t, se2)))
         | _ -> raise(Failure("cannot index object of type " ^ string_of_typ  e1_t)) 
       )
       | _ -> raise(Failure("need int to index collection"))
@@ -164,18 +164,32 @@ let check stmts =
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
       | Asn(vars, e) as st ->
-        let var = List.hd vars in (* TODO: Remove *)
-        let left_t = type_of_identifier var symbols
-        and (right_t, e') = expr e symbols in
-        let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
-          string_of_typ right_t ^ " in " ^ string_of_stmt st
-        in let _ = check_asn left_t right_t err 
+        let check_asn_elem var right_t =
+          let left_t = type_of_identifier var symbols in
+          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+            string_of_typ right_t ^ " in " ^ string_of_stmt st
+          in ignore(check_asn left_t right_t err)
+        in let _ = match vars with
+          | [var] -> check_asn_elem var (fst (expr e symbols))
+          | _ -> match fst (expr e symbols) with
+            | Tuple(typs) -> List.iter2 check_asn_elem vars typs
+            | _ -> raise(Failure "scanner should not have allowed simultaneous asn with non-tuple")
         in check_stmt tail symbols
-      | AsnDecl(vars, e) -> 
-        let var = List.hd vars in (* TODO: Remove *)
-        let (et, se) = expr e symbols in
-        check_stmt tail (add_to_scope var et symbols)
+      | AsnDecl(vars, e) -> (
+        match vars with
+        | [var] -> 
+          let (et, se) = expr e symbols in
+          check_stmt tail (add_to_scope var et symbols)
+        | _ -> 
+          let (et, _) = expr e symbols in
+          match et with
+          | Tuple(typs) -> 
+            let symbols' = List.fold_left2 (fun s v t -> add_to_scope v t s) symbols vars typs in
+            check_stmt tail symbols'
+          | _ -> raise(Failure "scanner should not have allowed simultaneous asn with non-tuple")
+        )
       | Expr e -> check_stmt tail symbols  
+      (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
       | While(p, s) -> check_bool_expr p; check_stmt s symbols
 
@@ -185,8 +199,17 @@ let check stmts =
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
       | Asn(vars, e) ->
-        let var = List.hd vars in (* TODO: Remove *)
-        (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+        let (et, se) = expr e symbols in (
+        match vars with 
+        | [var] -> (SAsn (var, (et, se) )) :: (append_sstmt symbols t)
+        | _ ->
+          let rec expand_asn vars i = 
+            let acc = AggAccessor(e, Lit(i)) in
+            match vars with
+            | [var] -> (SAsn (var, expr acc symbols)) :: (append_sstmt symbols t)
+            | var::tl -> (SAsn (var, expr acc symbols)) :: (expand_asn tl (i+1))
+          in expand_asn vars 0 
+        )
       | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
@@ -195,6 +218,7 @@ let check stmts =
         let (tp, se) = expr e symbols in
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+      (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
         SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)

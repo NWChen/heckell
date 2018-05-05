@@ -75,7 +75,7 @@ let rec string_of_expr = function
                   ^ " | " ^ string_of_stmt s 
                   ^ ", " ^ string_of_expr e2 ^ "}"
     )
-  | CollAccessor(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
+  | AggAccessor(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
@@ -135,7 +135,7 @@ let rec string_of_sexpr (t, e) =
                   ^ " | " ^ string_of_sstmt s 
                   ^ ", " ^ string_of_sexpr e2 ^ "}"
     )
-  | SCollAccessor(e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]"
+  | SAggAccessor(e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]"
   | SFuncDef(formals, stmts) ->
       "(\n    " ^ (String.concat ";\n    " (List.map string_of_sstmt (formals@stmts))) ^ "\n  )"
   ) ^ " : " ^ (string_of_typ t) ^ ")"
