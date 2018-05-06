@@ -126,11 +126,7 @@ let translate (stmt_list) =
   let builder = L.builder_at_end context (L.entry_block the_function) in
 
   (* Create a pointer to a format string for printf *)
-  let int_format_str      = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
-  and set_int_format_str  = L.build_global_stringptr "%d "  "set_str" builder
-  and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
-  and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
+  let str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
   and int_str             = L.build_global_stringptr "Int"  "int" builder
   and real_str            = L.build_global_stringptr "Real" "real" builder
   and bool_str            = L.build_global_stringptr "Bool" "bool" builder
@@ -173,8 +169,7 @@ let translate (stmt_list) =
         let params = Array.of_list (llfrmt::str_num::str_addrs) in
         let fcall = L.build_call string_interpolation_func params "temp" builder in
         L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
-      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder 
-      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
+      | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
       | SFuncCall ("print_set", e) -> L.build_call print_hset_func [| (expr builder var_map e) |] "" builder
       | SBinop (e1, op, e2) -> 
         let (t, _) = e1
