@@ -30,8 +30,9 @@ let translate (stmt_list) =
   let i1_t       = L.i1_type        context in
   let f32_t      = L.float_type     context in
   let str_t      = L.pointer_type   i8_t    in
+  let ptr_t      = L.pointer_type   i8_t    in
   let intp_t     = L.pointer_type   i32_t   in
-  let void       = L.void_type      context in
+  let void_t     = L.void_type      context in
   let i1_t       = L.i1_type        context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
@@ -91,14 +92,29 @@ let translate (stmt_list) =
 
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
-      L.var_arg_function_type void [| str_t |] in
+      L.var_arg_function_type void_t [| str_t |] in
   let destroy_hset_func : L.llvalue =
       L.declare_function "destroy_hset" destroy_hset_t the_module in
 
   let print_hset_t : L.lltype =
-      L.var_arg_function_type void [| str_t |] in
+      L.var_arg_function_type void_t [| str_t |] in
   let print_hset_func : L.llvalue =
       L.declare_function "print_hset" print_hset_t the_module in
+
+  let string_of_t : L.lltype =
+      L.function_type str_t [| ptr_t ; str_t |] in
+  let string_of_func : L.llvalue = 
+      L.declare_function "string_of" string_of_t the_module in 
+  
+  let string_interpolation_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t ; i32_t |] in
+  let string_interpolation_func : L.llvalue =
+      L.declare_function "string_interpolation" string_interpolation_t the_module in
+
+  let free_args_t : L.lltype =
+      L.var_arg_function_type void_t [| i32_t |] in
+  let free_args_func : L.llvalue =
+      L.declare_function "free_args" free_args_t the_module in
 
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
@@ -119,12 +135,14 @@ let translate (stmt_list) =
   and real_str            = L.build_global_stringptr "Real" "real" builder
   and bool_str            = L.build_global_stringptr "Bool" "bool" builder
   and char_str            = L.build_global_stringptr "Char" "char" builder
+  and string_str          = L.build_global_stringptr "String" "string" builder
   in
   let strtype_of_typ = function
       A.PrimTyp(A.Int)  -> int_str
     | A.PrimTyp(A.Char) -> char_str
     | A.PrimTyp(A.Bool) -> bool_str
     | A.PrimTyp(A.Real) -> real_str
+    | A.String          -> string_str
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
@@ -140,6 +158,21 @@ let translate (stmt_list) =
           in add_list_vals sl (fst (List.hd sl)) hset_ptr  
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
+      | SInterStringLit(sl, el) -> 
+        let frmt = String.concat "%s" sl in
+        let llfrmt = L.build_global_stringptr frmt ".str" builder in
+        let expr_to_llstr (typ, se) =
+          let llval = expr builder var_map (typ, se) in
+          let val_addr = L.build_alloca (ltype_of_typ typ) "" builder in
+          let _ = L.build_store llval val_addr builder in
+          let bitcast = L.build_bitcast val_addr ptr_t "bitcast" builder in
+          L.build_call string_of_func [| bitcast ; strtype_of_typ typ |] "string_of" builder
+        in
+        let str_addrs = List.map expr_to_llstr el in
+        let str_num = L.const_int i32_t (List.length str_addrs) in
+        let params = Array.of_list (llfrmt::str_num::str_addrs) in
+        let fcall = L.build_call string_interpolation_func params "temp" builder in
+        L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder 
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall ("print_set", e) -> L.build_call print_hset_func [| (expr builder var_map e) |] "" builder

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
 #include "uthash.h"
@@ -35,7 +36,6 @@ int mystrcmp(const char *str1, const char *str2) {
 	return strcasecmp(str1, str2) == 0;
 }
 
-
 char *string_of(void *val, char *typ) {
 	char *key;
 	if (mystrcmp(typ, types[INT])) {
@@ -68,8 +68,9 @@ char *string_of(void *val, char *typ) {
 	} else if (mystrcmp(typ, types[SET])) {
 		struct hset_head * val_set = *(struct hset_head **)val;
 		int num = HASH_COUNT(val_set);
-		key = malloc(sizeof(char)*num*11+1);
+		key = malloc(sizeof(char)*num*12+3);
 		key[0] = '\0';
+		strcat(key, "{");
 		struct hset_head *curr, *temp;
 		char *elem;
 		HASH_ITER(hh, val_set, curr, temp) {
@@ -78,11 +79,52 @@ char *string_of(void *val, char *typ) {
 			strcat(key, ",");
 			free(elem);
 		}
+		strcat(key, "}");
 	}
 	//fprintf(stderr, "string_of, return %s key\n", key);
 	return key;
 }
 
+/* inserts variable arguments into formatted string */
+char *string_interpolation(char *frmt, int num, ...) {
+	va_list args;
+	/* initialize valist for num number of arguments */
+  va_start(args, num);
+
+  unsigned int tot_len = strlen(frmt) + 1;
+  /* access all the arguments assigned to valist */
+  char *curr;
+  for (int i = 0; i < num; i++) {
+  	curr = va_arg(args, char*);
+  	tot_len += strlen(curr);
+  }
+  /* clean memory reserved for valist */
+  va_end(args);
+
+  va_start(args, num);
+  char *ret = malloc(sizeof(char)*tot_len);
+  vsprintf(ret, frmt, args);
+
+  va_end(args);
+
+  return ret;
+}
+
+/* frees variable arguments */
+void free_args(int num, ...) {
+	va_list args;
+	/* initialize valist for num number of arguments */
+  va_start(args, num);
+
+  /* access all the arguments assigned to valist */
+  char *curr;
+  for (int i = 0; i < num; i++) {
+  	free(va_arg(args, char*));
+  }
+	
+  /* clean memory reserved for valist */
+  va_end(args);
+}
 
 struct hset_head *init_hset() {
 	//fprintf(stderr, "init_hset called\n");
