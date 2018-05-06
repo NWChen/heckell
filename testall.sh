@@ -22,6 +22,8 @@ Compare() {
         echo "SUCCESS"
     else
         echo "FAIL"
+        cat $1
+        cat $2
     fi
 }
 
@@ -39,7 +41,7 @@ do
     *test-*)
         $HECKELL $file > "tests/${basename}.ll"
         $LLC "tests/${basename}.ll" > "tests/${basename}.s"
-        $CC -o "tests/${basename}.exe" "tests/${basename}.s"
+        $CC -o "tests/${basename}.exe" "tests/${basename}.s" "ut-sets.o"
         "./tests/${basename}.exe" > "tests/${basename}.diff"
         Compare tests/${basename}.diff tests/${basename}.out
         ;;

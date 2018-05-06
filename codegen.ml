@@ -27,7 +27,11 @@ let translate (stmt_list) =
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type       context in
   let i8_t       = L.i8_type        context in
+  let i1_t       = L.i1_type        context in
+  let f32_t      = L.float_type     context in
   let str_t      = L.pointer_type   i8_t    in
+  let intp_t     = L.pointer_type   i32_t   in
+  let void       = L.void_type      context in
   let i1_t       = L.i1_type        context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
@@ -35,17 +39,54 @@ let translate (stmt_list) =
 
   (* Convert Heckell types to LLVM types *)
   let ltype_of_typ = function
-      A.PrimTyp(A.Int) -> i32_t
-    | A.PrimTyp(A.Bool)  -> i1_t
-    | A.String         -> str_t
+      A.PrimTyp(A.Int)  -> i32_t
+    | A.PrimTyp(A.Char) -> i8_t
+    | A.PrimTyp(A.Bool) -> i1_t
+    | A.PrimTyp(A.Real) -> f32_t
+    | A.String          -> str_t
+    | A.Set(_)          -> str_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
   (* Declare a "printf" function to implement MicroC's "print". *)
   let printf_t : L.lltype = 
-      L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
+      L.var_arg_function_type i32_t [| str_t |] in
   let printf_func : L.llvalue = 
      L.declare_function "printf" printf_t the_module in 
+
+  (* str_t represents any pointer as char, void, hset_head pointers 
+     are all i8 pointers to LLVM *)
+  (* init_hset returns hset_head pointer (NULL) *)
+  let init_hset_t : L.lltype = 
+      L.var_arg_function_type str_t [| (* void *) |] in
+  let init_hset_func : L.llvalue =
+      L.declare_function "init_hset" init_hset_t the_module in
+   
+  (* add_val returns new hset_head pointer and
+     takes string of value, void pointer to value,
+     type string, and original hset_head pointer*)
+  let add_val_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let add_val_func : L.llvalue =
+      L.declare_function "add_val" add_val_t the_module in
+
+  (* del_val returns new hset_head pointer and
+     takes string of value, type string, and original hset_head pointer *)
+  let del_val_t : L.lltype = 
+      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+  let del_val_func : L.llvalue =
+      L.declare_function "del_val" del_val_t the_module in
+
+  (* destroy_hset takes hset_head pointer to be destroyed *)
+  let destroy_hset_t : L.lltype = 
+      L.var_arg_function_type void [| str_t |] in
+  let destroy_hset_func : L.llvalue =
+      L.declare_function "destroy_hset" destroy_hset_t the_module in
+
+  let print_hset_t : L.lltype =
+      L.var_arg_function_type void [| str_t |] in
+  let print_hset_func : L.llvalue =
+      L.declare_function "print_hset" print_hset_t the_module in
 
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
@@ -55,22 +96,42 @@ let translate (stmt_list) =
   (* Create an Instruction Builder, which points into a basic block
     and determines where the next instruction should be placed *)
   let builder = L.builder_at_end context (L.entry_block the_function) in
-  (* Create a pointer to a format string for printf *)
-  let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
+  (* Create a pointer to a format string for printf *)
+  let int_format_str      = L.build_global_stringptr "%d\n" "fmt" builder 
+  and str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
+  and set_int_format_str  = L.build_global_stringptr "%d "  "set_str" builder
+  and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
+  and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
+  and int_str             = L.build_global_stringptr "Int"  "int" builder
+  and real_str            = L.build_global_stringptr "Real" "real" builder
+  and bool_str            = L.build_global_stringptr "Bool" "bool" builder
+  and char_str            = L.build_global_stringptr "Char" "char" builder
+  in
+  let strtype_of_typ = function
+      A.PrimTyp(A.Int)  -> int_str
+    | A.PrimTyp(A.Char) -> char_str
+    | A.PrimTyp(A.Bool) -> bool_str
+    | A.PrimTyp(A.Real) -> real_str
+  in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
   in
+
   let build_statements (builder, var_map) stmt = 
     let rec expr builder var_map (_, e) = match e with
         SLit i -> L.const_int i32_t i
+      | SCharLit c -> L.const_int i8_t (Char.code c)
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SRealLit r -> L.const_float f32_t r
+      | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
+          in add_list_vals sl (fst (List.hd sl)) hset_ptr  
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
+      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder 
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
-      | SBinop (e1, op, e2) ->
+      | SFuncCall ("print_set", e) -> L.build_call print_hset_func [| (expr builder var_map e) |] "" builder
+      | SBinop (e1, op, e2) -> 
         let (t, _) = e1
         and e1' = expr builder var_map e1
         and e2' = expr builder var_map e2 in
@@ -110,6 +171,19 @@ let translate (stmt_list) =
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
       | _ -> to_imp "expression builder" (* TODO: implemnet variable reference *)
+    and add_list_vals (slist: sexpr list) t hset_ptr = match slist with
+      | [] -> raise (Failure "empty list added to set") 
+      | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+          let _ = L.build_store (expr builder var_map se) val_addr builder in
+          let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+          L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
+      | head :: tail -> 
+          let new_hset_ptr = 
+            let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+            let _ = L.build_store (expr builder var_map head) val_addr builder in
+            let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in 
+            L.build_call add_val_func [| bitcast; (strtype_of_typ t); hset_ptr |] "add_val" builder 
+          in add_list_vals tail t new_hset_ptr 
     in 
 
     let add_terminal builder f = match L.block_terminator (L.insertion_block builder) with
@@ -120,14 +194,13 @@ let translate (stmt_list) =
     let rec stmt_builder (builder, var_map) = function 
           SExpr e -> ignore(expr builder var_map e); (builder, var_map)
         (* Handle a declaration *)
-
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
+            in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
 
         | SAsn (n, sexpr) -> let addr = lookup n var_map
-                  in let e' = expr builder var_map sexpr
-                  in let _ = L.build_store e' addr builder 
-                  in (builder, var_map) (* TODO: should this really be ignored? *)
+            in let e' = expr builder var_map sexpr
+            in let _ = L.build_store e' addr builder 
+            in (builder, var_map) (* TODO: should this really be ignored? *)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
