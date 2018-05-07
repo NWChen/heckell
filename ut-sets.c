@@ -242,7 +242,7 @@ char *string_of(void *val, char *typ) {
 			char *elem;
 			HASH_ITER(hh, val_set, curr, temp) {
 				elem = string_of(curr->val_p, temp_ctyp);
-				
+
 				typ_cmp_size = strlen(elem) + 4;
 				if (key_len+typ_cmp_size >= buff_size) {
 					buff_size += typ_cmp_size;
@@ -353,6 +353,7 @@ void print_hset(struct hset_head *hash_set) {
 	printf("}\n");
 }
 
+
 void *alloc_copy(void *val_p, char *typ) {
 	void *new_val_p;
 
@@ -397,6 +398,12 @@ void *alloc_copy(void *val_p, char *typ) {
 		} 
 		else if (mystrcmp(ctyp, types[BOOL])) { 
 			size_t m_size = sizeof(int);
+			unsigned int remainder = val_size % m_size;
+			if (remainder != 0)	val_size += m_size - remainder;
+			val_size += m_size;
+			if (max_size < m_size) max_size = m_size;
+		} else if (mystrcmp(ctyp, types[STRING])) {
+			size_t m_size = sizeof(char *);
 			unsigned int remainder = val_size % m_size;
 			if (remainder != 0)	val_size += m_size - remainder;
 			val_size += m_size;
