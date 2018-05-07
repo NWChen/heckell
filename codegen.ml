@@ -47,7 +47,7 @@ let translate (stmt_list) =
     | A.String          -> str_t
     | A.Set(_)          -> str_t
     | A.Tuple(typs)     -> 
-      L.pointer_type (L.struct_type context (Array.of_list (List.map ltype_of_typ typs)))
+      L.struct_type context (Array.of_list (List.map ltype_of_typ typs))
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -139,6 +139,8 @@ let translate (stmt_list) =
     | A.PrimTyp(A.Bool) -> bool_str
     | A.PrimTyp(A.Real) -> real_str
     | A.String          -> string_str
+    | A.Tuple(_) as tup -> 
+      L.build_global_stringptr (string_of_typ tup) "tup" builder
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
@@ -148,7 +150,7 @@ let translate (stmt_list) =
     let rec expr builder var_map (typ, e) = match e with
         SLit i -> L.const_int i32_t i
       | SCharLit c -> L.const_int i8_t (Char.code c)
-      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SBoolLit b -> L.const_int i8_t (if b then 1 else 0)
       | SRealLit r -> L.const_float f32_t r
       | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
           in add_list_vals sl (fst (List.hd sl)) hset_ptr  
@@ -215,12 +217,12 @@ let translate (stmt_list) =
         ) e' "tmp" builder
       | STupleLit(sel) ->
         let llvals = List.map (expr builder var_map) sel in
-        let tup_addr = L.build_alloca (L.element_type (ltype_of_typ typ)) "temp" builder in
+        let tup_addr = L.build_alloca (ltype_of_typ typ) "tup_temp" builder in
         let store_val i v = 
           let gep_ptr = L.build_struct_gep tup_addr i "" builder in
           ignore(L.build_store v gep_ptr builder)
         in
-        List.iteri store_val llvals; tup_addr
+        List.iteri store_val llvals; L.build_load tup_addr "" builder
       | SAggAccessor(e1, e2) -> (
         let llptr = expr builder var_map e1 in
         match fst e1 with

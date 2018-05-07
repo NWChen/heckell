@@ -102,7 +102,7 @@ char *string_of(void *val, char *typ) {
 	int t_n = parse_type(ctyp);
 	int is_tuple = t_n != 1;
 
-	int buff_size = 100;
+	size_t buff_size = 100;
 	char *key = malloc(buff_size);
 	int key_len = 0;
 	if (is_tuple) {
@@ -423,14 +423,14 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	return hset_new;
 }
 
-int main() {
-	// int x = 4;
-	// float d = 3.14;
-	// char a = 'a';
-	// printf("%s\n", string_of(&x, "int"));
-	// printf("%s\n", string_of(&d, "real"));
-	// printf("%s\n", string_of(&a, "char"));
-	// printf("%s\n", string_of(&x, "bool"));
-	struct {int x; float y; char *z; char w;} s = {3,4.3, "hello", '9'};
-	printf("%s\n", string_of(&s, "(int * real * string * char)"));
-}
+// int main() {
+// 	// int x = 4;
+// 	// float d = 3.14;
+// 	// char a = 'a';
+// 	// printf("%s\n", string_of(&x, "int"));
+// 	// printf("%s\n", string_of(&d, "real"));
+// 	// printf("%s\n", string_of(&a, "char"));
+// 	// printf("%s\n", string_of(&x, "bool"));
+// 	struct {int x; float y; char *z; char w;} s = {3,4.3, "hello", '9'};
+// 	printf("%s\n", string_of(&s, "(int * real * string * char)"));
+// }
