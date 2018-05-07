@@ -42,7 +42,7 @@ let translate (stmt_list) =
   let rec ltype_of_typ = function
       A.PrimTyp(A.Int)  -> i32_t
     | A.PrimTyp(A.Char) -> i8_t
-    | A.PrimTyp(A.Bool) -> i1_t
+    | A.PrimTyp(A.Bool) -> i8_t  (* for compatability with c types, can't use i1 *)
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
     | A.Set(_)          -> str_t

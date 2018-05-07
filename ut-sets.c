@@ -86,6 +86,9 @@ char *resize_string(char *str, size_t n) {
 	return new_str;
 }
 
+/* Converts val to string. Return value needs 
+ * to be freed by caller
+ */
 char *string_of(void *val, char *typ) {
 	// copy typ so we can modify it
 	char *ctyp = strdup(typ);
@@ -182,17 +185,31 @@ char *string_of(void *val, char *typ) {
 			unsigned int remainder = byte_offset % sizeof(char);
 			if (remainder != 0)	byte_offset += sizeof(char) - remainder;
 
-			float deref_val = ((char *)val)[byte_offset/sizeof(char)];
+			char deref_val = ((char *)val)[byte_offset/sizeof(char)];
 			byte_offset += sizeof(char);
 
 
-			if (*(int *)val) {
-				key_len += snprintf(key, typ_cmp_size, "%s, ", "true");
+			if (deref_val) {
+				key_len += snprintf(key+key_len, typ_cmp_size, "%s, ", "true");
 			} else {
-				key_len +=snprintf(key, typ_cmp_size, "%s, ", "false");
+				key_len +=snprintf(key+key_len, typ_cmp_size, "%s, ", "false");
 			}
 		} else if (mystrcmp(ctyp, types[STRING])) {
-			key = strdup(*(char **)val);
+			// offset to multiple of type size
+			unsigned int remainder = byte_offset % sizeof(char *);
+			if (remainder != 0)	byte_offset += sizeof(char *) - remainder;
+
+			char *deref_val = ((char **)val)[byte_offset/sizeof(char *)];
+			byte_offset += sizeof(char *);
+
+			typ_cmp_size = strlen(deref_val) + 3;
+			if (key_len+typ_cmp_size >= buff_size) {
+				buff_size += typ_cmp_size;
+				buff_size *= BUFF_MULT;
+				key = resize_string(key, buff_size);
+			}
+			
+			key_len += snprintf(key+key_len, typ_cmp_size, "%s, ", deref_val);
 
 		} else if (mystrcmp(ctyp, types[SET])) {
 			struct hset_head * val_set = *(struct hset_head **)val;
@@ -414,6 +431,6 @@ int main() {
 	// printf("%s\n", string_of(&d, "real"));
 	// printf("%s\n", string_of(&a, "char"));
 	// printf("%s\n", string_of(&x, "bool"));
-	struct {int x; float y; char z; char w;} s = {3,4.3, '6', '9'};
-	printf("%s\n", string_of(&s, "(int * real * char * char)"));
+	struct {int x; float y; char *z; char w;} s = {3,4.3, "hello", '9'};
+	printf("%s\n", string_of(&s, "(int * real * string * char)"));
 }
