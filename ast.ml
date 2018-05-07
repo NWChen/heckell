@@ -10,6 +10,7 @@ type prim_typ = Int | Bool | Real | Char
 (* Maybe we should fuse prim_typ into typ *)
 type typ = 
   | Set of typ 
+  | Map of typ * typ
   | Tuple of typ list 
   | Array of typ
   | String
