@@ -51,12 +51,18 @@ int mystrcmp(const char *str1, const char *str2) {
 int parse_type(char *typ) {
 	int n = 1;
 	int p = 0;
+	int curr_s = 0;
 	int len = strlen(typ);
 	for (int i = 0; i < len; i++) {
 		char c = typ[i];
 		if (c == ')') {
 			p--;
-			if (p == 0) typ[i] = ' ';
+			if (p == 0) {
+				// only trim paren of element if it is a tuple
+				// else, restore the beginning paren (e.g. sets)
+				if (i+2 >= len || typ[i+2] == '*') typ[i] = ' ';
+				else typ[curr_s] = '(';
+			}
 			continue;
 		} else if (c == '(') {
 			if (p == 0) typ[i] = ' ';
@@ -72,6 +78,7 @@ int parse_type(char *typ) {
 			typ[i] = '\0';
 			typ[i-1] = '\0';
 			typ[i+1] = '\0';
+			curr_s = i+2;
 		}
 	}
 
@@ -104,6 +111,7 @@ char *string_of(void *val, char *typ) {
 
 	size_t buff_size = 100;
 	char *key = malloc(buff_size);
+	key[0] = '\0';
 	int key_len = 0;
 	if (is_tuple) {
 		key[0] = '(';
@@ -115,6 +123,7 @@ char *string_of(void *val, char *typ) {
 	while (t_n --> 0) {
 		// skip to beginning of next type
 		while (*ctyp == '\0') ctyp++;
+		t_l = strlen(ctyp);
 		// size of curr component of tuple type
 		size_t typ_cmp_size;
 		if (mystrcmp(ctyp, types[INT])) {
@@ -211,25 +220,58 @@ char *string_of(void *val, char *typ) {
 			
 			key_len += snprintf(key+key_len, typ_cmp_size, "%s, ", deref_val);
 
-		} else if (mystrcmp(ctyp, types[SET])) {
+		} else if (mystrcmp(ctyp+t_l-3, types[SET])) {
+			char *temp_ctyp = strdup(ctyp);
+			// remove ' set' from end of type str
+			temp_ctyp[t_l-4] = '\0';
+
+			// check if '{}, ' can be added
+			typ_cmp_size = 4;
+			if (key_len+typ_cmp_size >= buff_size) {
+				buff_size += typ_cmp_size;
+				buff_size *= BUFF_MULT;
+				key = resize_string(key, buff_size);
+			}
+			strcat(key, "{");
+			key_len++;
+
 			struct hset_head * val_set = *(struct hset_head **)val;
 			int num = HASH_COUNT(val_set);
-			key = malloc(sizeof(char)*num*12+3);
-			key[0] = '\0';
-			strcat(key, "{");
+
 			struct hset_head *curr, *temp;
 			char *elem;
 			HASH_ITER(hh, val_set, curr, temp) {
-				elem = string_of(curr->val_p, "int");
+				elem = string_of(curr->val_p, temp_ctyp);
+				
+				typ_cmp_size = strlen(elem) + 4;
+				if (key_len+typ_cmp_size >= buff_size) {
+					buff_size += typ_cmp_size;
+					buff_size *= BUFF_MULT;
+					key = resize_string(key, buff_size);
+				}
+
 				strcat(key, elem);
-				strcat(key, ",");
+				strcat(key, ", ");
 				free(elem);
+				key_len += typ_cmp_size - 2;
 			}
-			strcat(key, "}");
+
+			if (num != 0) {
+				// remove leading ', ' and replace with '}, '
+				key[key_len-2] = '}';
+				key[key_len-1] = ',';
+				key[key_len] = ' ';
+				key[key_len+1] = '\0';
+				key_len++;
+			} else {
+				strcat(key, "}, ");
+				key_len += 3;
+			}
+
+			free(temp_ctyp);
 		}
 
 		// skip to end of curr type
-		t_l = strlen(ctyp);
 		ctyp += t_l;
 	}
 	
@@ -313,22 +355,66 @@ void print_hset(struct hset_head *hash_set) {
 
 void *alloc_copy(void *val_p, char *typ) {
 	void *new_val_p;
-	if (mystrcmp(typ, types[INT])) {
-		new_val_p = malloc(sizeof(int));
-		memcpy(new_val_p, val_p, sizeof(int));
+
+	// copy typ so we can modify it
+	char *ctyp = strdup(typ);
+	char *og_ctyp = ctyp;
+	int t_l = strlen(ctyp);
+	// trim parentheses
+	if (ctyp[t_l-1] == ')') {
+		ctyp[t_l-1] = '\0';
+		ctyp++;
 	}
-	else if (mystrcmp(typ, types[REAL])) {
-		new_val_p = malloc(sizeof(double));
-		memcpy(new_val_p, val_p, sizeof(double));
-	} 
-	else if (mystrcmp(typ, types[CHAR])) {
-		new_val_p = malloc(sizeof(char));
-		memcpy(new_val_p, val_p, sizeof(char));
-	} 
-	else if (mystrcmp(typ, types[BOOL])) { 
-		new_val_p = malloc(sizeof(int));
-		memcpy(new_val_p, val_p, sizeof(int));
+	int t_n = parse_type(ctyp);
+
+	// used to index struct like array
+	size_t val_size = 0;
+	size_t max_size = 0;
+	while (t_n --> 0) {
+		// skip to beginning of next type
+		while (*ctyp == '\0') ctyp++;
+
+		if (mystrcmp(ctyp, types[INT])) {
+			size_t m_size = sizeof(int);
+			unsigned int remainder = val_size % m_size;
+			if (remainder != 0)	val_size += m_size - remainder;
+			val_size += m_size;
+			if (max_size < m_size) max_size = m_size;
+		}
+		else if (mystrcmp(ctyp, types[REAL])) {
+			size_t m_size = sizeof(float);
+			unsigned int remainder = val_size % m_size;
+			if (remainder != 0)	val_size += m_size - remainder;
+			val_size += m_size;
+			if (max_size < m_size) max_size = m_size;
+		} 
+		else if (mystrcmp(ctyp, types[CHAR])) {
+			size_t m_size = sizeof(char);
+			unsigned int remainder = val_size % m_size;
+			if (remainder != 0)	val_size += m_size - remainder;
+			val_size += m_size;
+			if (max_size < m_size) max_size = m_size;
+		} 
+		else if (mystrcmp(ctyp, types[BOOL])) { 
+			size_t m_size = sizeof(int);
+			unsigned int remainder = val_size % m_size;
+			if (remainder != 0)	val_size += m_size - remainder;
+			val_size += m_size;
+			if (max_size < m_size) max_size = m_size;
+		}
+
+		// skip to end of curr type
+		t_l = strlen(ctyp);
+		ctyp += t_l;
 	}
+
+	unsigned int remainder = val_size % max_size;
+	if (remainder != 0)	val_size += max_size - remainder;
+
+	free(og_ctyp);
+
+	new_val_p = malloc(val_size);
+	memcpy(new_val_p, val_p, val_size);
 
 	return new_val_p;
 }

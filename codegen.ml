@@ -61,7 +61,7 @@ let translate (stmt_list) =
      are all i8 pointers to LLVM *)
   (* init_hset returns hset_head pointer (NULL) *)
   let init_hset_t : L.lltype = 
-      L.var_arg_function_type str_t [| (* void *) |] in
+      L.function_type str_t [| (* void *) |] in
   let init_hset_func : L.llvalue =
       L.declare_function "init_hset" init_hset_t the_module in
    
@@ -69,37 +69,32 @@ let translate (stmt_list) =
      takes string of value, void pointer to value,
      type string, and original hset_head pointer*)
   let add_val_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let add_val_func : L.llvalue =
       L.declare_function "add_val" add_val_t the_module in
 
   (* del_val returns new hset_head pointer and
      takes string of value, type string, and original hset_head pointer *)
   let del_val_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let del_val_func : L.llvalue =
       L.declare_function "del_val" del_val_t the_module in
 
   let hset_union_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let hset_union_func : L.llvalue =
       L.declare_function "hset_union" hset_union_t the_module in
 
   let hset_diff_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let hset_diff_func : L.llvalue =
       L.declare_function "hset_diff" hset_diff_t the_module in
 
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
-      L.var_arg_function_type void_t [| str_t |] in
+      L.function_type void_t [| str_t |] in
   let destroy_hset_func : L.llvalue =
       L.declare_function "destroy_hset" destroy_hset_t the_module in
-
-  let print_hset_t : L.lltype =
-      L.var_arg_function_type void_t [| str_t |] in
-  let print_hset_func : L.llvalue =
-      L.declare_function "print_hset" print_hset_t the_module in
 
   let string_of_t : L.lltype =
       L.function_type str_t [| ptr_t ; str_t |] in
@@ -141,6 +136,8 @@ let translate (stmt_list) =
     | A.String          -> string_str
     | A.Tuple(_) as tup -> 
       L.build_global_stringptr (string_of_typ tup) "tup" builder
+    | A.Set(_) as set   -> 
+      L.build_global_stringptr (string_of_typ set) "set" builder
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
@@ -172,7 +169,6 @@ let translate (stmt_list) =
         let fcall = L.build_call string_interpolation_func params "temp" builder in
         L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
       | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
-      | SFuncCall ("print_set", e) -> L.build_call print_hset_func [| (expr builder var_map e) |] "" builder
       | SBinop (e1, op, e2) -> 
         let (t, _) = e1
         and e1' = expr builder var_map e1
@@ -217,7 +213,7 @@ let translate (stmt_list) =
         ) e' "tmp" builder
       | STupleLit(sel) ->
         let llvals = List.map (expr builder var_map) sel in
-        let tup_addr = L.build_alloca (ltype_of_typ typ) "tup_temp" builder in
+        let tup_addr = L.build_alloca (ltype_of_typ typ) "temp" builder in
         let store_val i v = 
           let gep_ptr = L.build_struct_gep tup_addr i "" builder in
           ignore(L.build_store v gep_ptr builder)
