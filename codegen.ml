@@ -290,7 +290,11 @@ let translate (stmt_list) =
         | SFor (n, a, body) -> 
             let base_addr = expr builder var_map a in
             let len = match (snd a) with
-              SArrayLit(x) -> List.length x
+                SArrayLit(x) -> List.length x
+              | SArrayRange(e1, i, e2) ->
+                match i with
+                    Some x ->  List.length (build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2)
+                  | None -> List.length (build_list e1 1 e2)
               | _ -> raise (Failure "incorrect type")
             in
             let var = L.build_alloca i32_t n builder in (* hardcoded type *)
@@ -305,8 +309,6 @@ let translate (stmt_list) =
                 let new_var_map = StringMap.add n var var_map in
                 List.fold_left stmt_builder (builder, new_var_map) body;
                 for_body (i + 1) len
-(*                 let for_builder, var_map = List.fold_left stmt_builder (builder, new_var_map) body in
-                (for_builder, var_map) *)
               else
                 (builder, var_map)
             in

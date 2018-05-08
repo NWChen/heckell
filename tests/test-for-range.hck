@@ -1,6 +1,6 @@
 let sum: int;
 sum = 0;
-for x in [0, 2, 4, 5] do
+for x in [0 ... 5] do
     sum = sum + x;
     print(sum);
 end
