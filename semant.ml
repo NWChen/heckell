@@ -27,8 +27,10 @@ let check stmts =
   let add_to_scope var typ scope = 
     {scope with symb = StringMap.add var typ scope.symb} 
   in
-  let check_asn left_t right_t err =
-    if left_t = right_t then left_t else raise (Failure err)
+  let check_asn left_t right_t err = match right_t with
+    | Set(PrimTyp(Char)) | Set(PrimTyp(Bool)) | Set(PrimTyp(Real))
+          -> if left_t = PrimTyp(Int) then ignore(left_t)
+    | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
@@ -206,6 +208,7 @@ let check stmts =
   in
   let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
   let symbols_init = StringMap.add "print_string" (Func(String, PrimTyp(Int))) symbols_init in
+  let symbols_init = StringMap.add "print_set" (Func(Set(PrimTyp(Int)), PrimTyp(Int))) symbols_init in
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
   in append_sstmt symbols stmts
