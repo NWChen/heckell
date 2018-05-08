@@ -132,6 +132,18 @@ let check stmts =
         in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
       | _ -> raise (Failure ("non-function type stored")) )
+    | SetBuilder(func_ext, iter, func) -> match func_ext with
+      | None -> 
+          let iter' = (match iter with 
+            | Iter(id, aggr) -> let aggr_t = fst (expr aggr scope) 
+                in match aggr_t with
+                | Set(set_t) -> ([SDecl(List.hd id, set_t)], (set_t, Set(set_t)))
+                | Array(arr_t) -> ([SDecl(List.hd id, arr_t)], (arr_t, Array(arr_t)))
+            | _ -> raise (Failure ("incorrect set builder format"))
+          )
+          in let func' = SFuncDef(fst iter', [SExpr(expr func scope)])
+        in (Set(fst (snd iter')), SSetBuilder(None, iter', func'))
+      | Some e -> raise (Failure ("not implemented extended set builder"))
     | _ -> raise (Failure ("not matched"))
   
   and check_stmt to_check symbols = 
