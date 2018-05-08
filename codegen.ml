@@ -60,7 +60,7 @@ let translate (stmt_list) =
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
   let lookup n map = try StringMap.find n map
-                     with Not_found -> to_imp "ERROR: asn not found."
+                     with Not_found -> raise (Failure "ERROR: asn not found.")
   in
 
   let get_int_or_float e = match e with
@@ -97,6 +97,7 @@ let translate (stmt_list) =
         | A.Greater -> L.build_fcmp L.Fcmp.Ogt
         | A.Geq     -> L.build_fcmp L.Fcmp.Oge
         | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
+        | _         -> to_imp "Binop not yet implemented"
         ) e1' e2' "tmp" builder 
         else (match op with
         | A.Add     -> L.build_add
@@ -111,6 +112,7 @@ let translate (stmt_list) =
         | A.Leq     -> L.build_icmp L.Icmp.Sle
         | A.Greater -> L.build_icmp L.Icmp.Sgt
         | A.Geq     -> L.build_icmp L.Icmp.Sge
+        | _         -> to_imp "Binop not yet implemented"
         ) e1' e2' "tmp" builder
       | SUniop(op, e) ->
         let (t, _) = e and e' = expr builder var_map e in
@@ -210,6 +212,7 @@ let translate (stmt_list) =
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
             (L.builder_at_end context merge_bb, var_map)
+        | _ -> to_imp "Statement not yet handled"
 
     in stmt_builder (builder, var_map) stmt
 
