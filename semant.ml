@@ -117,8 +117,10 @@ let check stmts =
         | _ -> raise (Failure ("index of array must be an integer"))
       in
       let e' = expr e scope in (* TODO need to check type *)
-      let arr_t = type_of_identifier l scope in
-      (array_element_type arr_t, SArrayAt(l, idx, e'))
+      let (new_ty, _) = e' in
+      let arr_t = array_element_type (type_of_identifier l scope) in
+      let _ = check_asn arr_t new_ty "New element needs to have same type as existing array elements" in
+      (arr_t, SArrayAt(l, idx, e'))
     | ArrayRange(e1, i, e2) -> 
       let e1' = expr e1 scope in
       let e2' = expr e2 scope in
