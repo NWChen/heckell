@@ -287,6 +287,21 @@ let translate (stmt_list) =
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
             (L.builder_at_end context merge_bb, var_map)
+        | SFor (n, a, body) -> 
+            let base_addr = a builder var_map sexpr in
+            let len = L.array_length arr in
+            let i = 0 in
+            if i < len then
+              let offset = L.const_int i32_t i in
+              let val_ptr = L.build_gep base_addr [| offset |] "val_ptr" builder in
+              let new_val = L.build_load val_ptr "new_val" builder in
+              let new_var_map = StringMap.add n new_val var_map in
+              let _ = L.build_store new_val (lookup n new_var_map) builder in
+            else
+
+            let body_bb = L.append_block context "while_body" the_function in
+            let for_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body in
+            (for_builder, var_map)
         | _ -> to_imp "Statement not yet handled"
 
     in stmt_builder (builder, var_map) stmt

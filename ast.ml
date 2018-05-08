@@ -46,7 +46,7 @@ and stmt =
   | Iter of string list * expr
   | If of expr * stmt list * stmt list
   | While of expr * stmt list
-  | For of expr * stmt list
+  | For of string * expr * stmt list
 
 type program = stmt list
 (* TODO: op for `(...)` (PARAMS) *)

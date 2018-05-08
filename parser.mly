@@ -188,7 +188,7 @@ stmt:
                             List.rev $6)) }
 | IF expr THEN stmt_list ELSE stmt_list END   { If($2, List.rev $4, List.rev $6) }
 | WHILE expr DO stmt_list END { While($2, List.rev $4) }
-| FOR expr DO stmt_list END { For($2, List.rev $4) }
+| FOR ID IN expr DO stmt_list END { For($2, $4, List.rev $6) }
 
 stmt_list:
   /* nothing */  { [] }
