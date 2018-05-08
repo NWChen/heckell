@@ -104,13 +104,13 @@ let translate (stmt_list) =
       L.declare_function "print_hset" print_hset_t the_module in
 
   let set_builder_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t, str_t |] in
+      L.var_arg_function_type str_t [| str_t; str_t |] in
   let set_builder_func : L.llvalue = 
       L.declare_function "set_builder" set_builder_t the_module in
 
   (* for testing function passing *)
   let func_pass_t : L.lltype = 
-      L.var_arg_function_type void [| str_t, str_t |] in
+      L.var_arg_function_type void [| str_t; str_t |] in
   let func_pass_func : L.llvalue = 
       L.declare_function "func_pass" func_pass_t the_module in
 
