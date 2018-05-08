@@ -83,11 +83,6 @@ let check stmts =
         | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
         | true -> (Set(set_t), SSetLit (sexpr_list))
       )
-    (* | SetBuilder(epot, st, ex) ->
-      match st with
-      | Iter(sl, ex)
-      TODO: make iter into expression parser-wise and choose between iter and member
-       *)
     | ArrayLit l ->
       let arr_t = match l with
         | [] -> PrimTyp(Int) (* this is bad, should look into type for empty collection *)
@@ -134,15 +129,17 @@ let check stmts =
       | _ -> raise (Failure ("non-function type stored")) )
     | SetBuilder(func_ext, iter, func) -> match func_ext with
       | None -> 
-          let iter' = (match iter with 
+          let vals = (match iter with 
             | Iter(id, aggr) -> let aggr_t = fst (expr aggr scope) 
                 in match aggr_t with
-                | Set(set_t) -> ([SDecl(List.hd id, set_t)], (set_t, Set(set_t)))
-                | Array(arr_t) -> ([SDecl(List.hd id, arr_t)], (arr_t, Array(arr_t)))
+                | Set(typ) | Array(typ) -> (typ, id, expr aggr (add_to_scope (List.hd id) typ scope))
             | _ -> raise (Failure ("incorrect set builder format"))
           )
-          in let func' = SFuncDef(fst iter', [SExpr(expr func scope)])
-        in (Set(fst (snd iter')), SSetBuilder(None, iter', func'))
+          in let typ, id, aggr = vals
+          in let decl = [SDecl(List.hd id, typ)]
+          in let iter' = SIter(decl, aggr)
+          in let func' = (PrimTyp(Bool), SFuncDef(decl, [SExpr(expr func (add_to_scope (List.hd id) typ scope))]))
+        in (Set(typ), SSetBuilder(None, iter', func'))
       | Some e -> raise (Failure ("not implemented extended set builder"))
     | _ -> raise (Failure ("not matched"))
   

@@ -14,7 +14,7 @@ and sx =
   | SInterStringLit of string list * sexpr list
   | STupleLit of sexpr list
   | SSetLit of sexpr list
-  | SSetBuilder of sexpr option * sstmt * sexpr
+  | SSetBuilder of sexpr option * sstmt * sexpr (* siter * sfuncdef *)
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
   | SFuncDef of sstmt list * sstmt list (* formals to decl * function body *)
@@ -24,7 +24,7 @@ and sstmt =
   | SAsn of string * sexpr
   | SDecl of string * typ
   | SExpr of sexpr
-  | SIter of sstmt list * sexpr (* decl list * set *)
+  | SIter of sstmt list * sexpr (* sdecl list * saggr *)
   | SIf of sexpr * sstmt list * sstmt list
   | SWhile of sexpr * sstmt list
 
