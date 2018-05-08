@@ -73,9 +73,15 @@ let translate (stmt_list) =
       | SFuncCall (s, e) ->
         let result = s ^ "_result" and f = L.define_function s (ltype_of_typ out_typ) the_module in
         L.build_call f (match e with
-        | (Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el) 
+        | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el) 
         | x -> [| expr builder var_map x |]
         ) result builder
+      (*| SFuncDef (args, stmts) ->
+        let build_function_decl =
+          let name = 
+        in let build_function_body ...
+        in let locals = ...
+        in *)
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = expr builder var_map e1
@@ -130,10 +136,28 @@ let translate (stmt_list) =
         | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
                   in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
 
-        | SAsn (n, sexpr) -> let addr = lookup n var_map
-                  in let e' = expr builder var_map sexpr
-                  in let _ = L.build_store e' addr builder 
-                  in (builder, var_map) (* TODO: should this really be ignored? *)
+        | SAsn (n, sexpr) -> let _ = (match sexpr with
+
+            (* function definition *)
+            | (out_typ, SFuncDef (args, stmts)) ->
+                let formals = List.map (fun arg -> match arg with
+                  | SDecl (n, t) -> (n, t)
+                  | _ -> to_imp "non-sdecl formal"
+                ) args in (* args -> SDecls *)
+                let arg_typs = Array.of_list (List.map (fun (_, t) -> ltype_of_typ t) formals) in
+                let func_typ = L.function_type (ltype_of_typ out_typ) arg_typs in
+                let func_def = L.define_function n func_typ the_module in (*the_function in the_module ? *)
+                (* call stmt builder again? *)
+                let func_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context (L.entry_block the_function), var_map) stmts in (* the module ? *)
+                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_typ) 0) in (*match out_typ with
+                  | t -> L.build_ret (L.const_int (ltype_of_typ t) 0)
+                  | _ -> L.build_ret (L.const_int (ltype_of_typ t) 0) in*)
+                add_terminal func_builder return_instr
+                (*in (builder, var_map)*)
+            | _ -> let addr = lookup n var_map in
+                let e' = expr builder var_map sexpr in
+                let _ = L.build_store e' addr builder in ()
+            ) in (builder, var_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
