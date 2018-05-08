@@ -60,7 +60,7 @@ let translate (stmt_list) =
   and str_format_str = L.build_global_stringptr "%s\n" "fmt_str" builder in
 
   let lookup n map = try StringMap.find n map
-                     with Not_found -> raise (Failure "ERROR: asn not found.")
+                     with Not_found -> raise (Failure ("ERROR: asn " ^ n ^ " not found."))
   in
   let build_statements (builder, var_map) stmt = 
     let rec expr builder var_map (out_typ, e) = match e with (* used to be (_, e) but we need that `out_typ` for SFuncCall *)
@@ -160,23 +160,26 @@ let translate (stmt_list) =
 
             (* function definition *)
             | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
-                let formals = List.map (fun arg -> match arg with
-                  | SDecl (n, t) -> (n, t)
-                  | _ -> to_imp "non-sdecl formal"
-                ) args in (* args -> SDecls *)
-                let arg_typs = Array.of_list (List.map (fun (_, t) -> ltype_of_typ t) formals) in
 
-                (* TODO move to SDecl *)
-                let func_typ = L.function_type (ltype_of_typ out_t) arg_typs in
-                let _ = L.define_function n func_typ the_module in (* func_def, essentially *)
+                (* Build formals, declaration, etc. *)
+                (* TODO more intelligent to just alias new formals to old formals? *)
+                let formals = List.mapi (fun i _ -> n ^ (string_of_int i)) args in
+                let formals' = List.map (fun arg -> match arg with (* Formals, now attached to names, specified in function assignment(definition). *)
+                  | SDecl (n, _) -> n
+                  | _ -> to_imp "Improperly specified formal (expected SDecl)."
+                ) args in
+                let formal_instrs = List.map (fun f -> StringMap.find f var_map) formals in
+                let var_map = List.fold_left2 (fun m f f' -> (* Replace temporary formal name bindings in `var_map` with new names. *)
+                  let instr = StringMap.find f m in
+                  (StringMap.add f' instr (StringMap.remove f m))
+                ) var_map formals formals' in
+                let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in
+                let _ = List.iter2 (fun f f' -> L.replace_all_uses_with f f') formal_instrs formal_instrs' in (* Replace temporary (<n>0, <n>1, ...) formal names in LLVM with new (user-specified) names. *)
 
-                (* call stmt builder again? *)
+                (* Build function body *)
                 let func_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context (L.entry_block the_function), var_map) stmts in (* the module ? *)
-                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_t) 0) in (*match out_t with
-                  | t -> L.build_ret (L.const_int (ltype_of_typ t) 0)
-                  | _ -> L.build_ret (L.const_int (ltype_of_typ t) 0) in*)
+                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_t) 0) in
                 add_terminal func_builder return_instr
-                (*in (builder, var_map)*)
             | _ -> let addr = lookup n var_map in
                 let e' = expr builder var_map sexpr in
                 let _ = L.build_store e' addr builder in ()
