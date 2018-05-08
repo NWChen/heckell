@@ -29,5 +29,6 @@ and sstmt =
   | SIter of sstmt list * sexpr (* decl list * set *)
   | SIf of sexpr * sstmt list * sstmt list
   | SWhile of sexpr * sstmt list
+  | SFor of sexpr * sstmt list
 
 type sprogram = sstmt list
