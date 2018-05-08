@@ -288,20 +288,29 @@ let translate (stmt_list) =
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
             (L.builder_at_end context merge_bb, var_map)
         | SFor (n, a, body) -> 
-            let base_addr = a builder var_map sexpr in
-            let len = L.array_length arr in
-            let i = 0 in
-            if i < len then
-              let offset = L.const_int i32_t i in
-              let val_ptr = L.build_gep base_addr [| offset |] "val_ptr" builder in
-              let new_val = L.build_load val_ptr "new_val" builder in
-              let new_var_map = StringMap.add n new_val var_map in
-              let _ = L.build_store new_val (lookup n new_var_map) builder in
-            else
+            let base_addr = expr builder var_map a in
+            let len = match (snd a) with
+              SArrayLit(x) -> List.length x
+              | _ -> raise (Failure "incorrect type")
+            in
+            let var = L.build_alloca i32_t n builder in (* hardcoded type *)
+            let rec for_body i len = 
+              if i < len then
+                let offset = L.const_int i32_t i in
+                let arr_ptr = L.build_gep base_addr [| offset |] "val_ptr" builder in
+                let arr_val = L.build_load arr_ptr "new_val" builder in
 
-            let body_bb = L.append_block context "while_body" the_function in
-            let for_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body in
-            (for_builder, var_map)
+                let _ = L.build_store arr_val var builder in
+
+                let new_var_map = StringMap.add n var var_map in
+                List.fold_left stmt_builder (builder, new_var_map) body;
+                for_body (i + 1) len
+(*                 let for_builder, var_map = List.fold_left stmt_builder (builder, new_var_map) body in
+                (for_builder, var_map) *)
+              else
+                (builder, var_map)
+            in
+            for_body 0 len
         | _ -> to_imp "Statement not yet handled"
 
     in stmt_builder (builder, var_map) stmt
