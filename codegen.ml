@@ -133,23 +133,46 @@ let translate (stmt_list) =
           SExpr e -> ignore(expr builder var_map e); (builder, var_map)
         (* Handle a declaration *)
 
-        | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-                  in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
+        | SDecl (n, t) -> 
+            let allocate n' t' = L.build_alloca (ltype_of_typ t') n' builder in (* t' != t passed to SDecl *)
+            let var_map = (match t with
+              (* primitive type declaration *)
+              | A.PrimTyp(_) -> 
+                  StringMap.add n (allocate n t) var_map (* L.build_alloca (ltype_of_typ t) n builder in*)
+
+              (* function declartion *)
+              | A.Func(in_t, out_t) ->
+                let name_formals formals = List.mapi (fun i _ -> n ^ (string_of_int i)) formals in (* we only know their type so far - thus formals are temporarily named n0, n1, ... where n = function name *) (* TODO check these temp names in Sasn. *)
+                let (formals, var_map) = (match in_t with (* n = name of function, t = (in_typ, out_typ) *)
+                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
+                      ([in_t], StringMap.add formal (allocate formal in_t) var_map) (* note that `n` is the name of the function, not the formal (arg). *)
+                  | A.Tuple(l) -> let formals = name_formals l in
+                      (l, List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t') m) var_map formals l)
+                  | _ -> raise (Failure ("Unsupported function input type."))
+                ) in
+                let formals_arr = Array.of_list (List.map (fun t -> ltype_of_typ t) formals) in
+                let func_typ = L.function_type (ltype_of_typ out_t) formals_arr in
+                let func_def = L.define_function n func_typ the_module in
+                StringMap.add n func_def var_map
+            ) in (builder, var_map)
 
         | SAsn (n, sexpr) -> let _ = (match sexpr with
 
             (* function definition *)
-            | (out_typ, SFuncDef (args, stmts)) ->
+            | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
                 let formals = List.map (fun arg -> match arg with
                   | SDecl (n, t) -> (n, t)
                   | _ -> to_imp "non-sdecl formal"
                 ) args in (* args -> SDecls *)
                 let arg_typs = Array.of_list (List.map (fun (_, t) -> ltype_of_typ t) formals) in
-                let func_typ = L.function_type (ltype_of_typ out_typ) arg_typs in
-                let func_def = L.define_function n func_typ the_module in (*the_function in the_module ? *)
+
+                (* TODO move to SDecl *)
+                let func_typ = L.function_type (ltype_of_typ out_t) arg_typs in
+                let _ = L.define_function n func_typ the_module in (* func_def, essentially *)
+
                 (* call stmt builder again? *)
                 let func_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context (L.entry_block the_function), var_map) stmts in (* the module ? *)
-                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_typ) 0) in (*match out_typ with
+                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_t) 0) in (*match out_t with
                   | t -> L.build_ret (L.const_int (ltype_of_typ t) 0)
                   | _ -> L.build_ret (L.const_int (ltype_of_typ t) 0) in*)
                 add_terminal func_builder return_instr
