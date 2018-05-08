@@ -1,2 +1,0 @@
-let x: int array;
-x = [1, 2, 3, 4];

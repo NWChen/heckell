@@ -41,13 +41,6 @@ let translate (stmt_list) =
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
-  let llvalue_to_int l =
-    let s = L.string_of_llvalue l in
-    match s with
-      "int" -> int_of_string s
-      | _ -> 0
-  in
-
   (* Declare a "printf" function to implement MicroC's "print". *)
   let printf_t : L.lltype = 
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -76,8 +69,7 @@ let translate (stmt_list) =
   in
 
   let rec build_list s inc e = 
-    let (t, s') = s in
-    let (_, e') = e in
+    let (t, _) = s in
     let x = (get_int_or_float s) + inc in
     if x <= (get_int_or_float e) + inc then let x' = (t, (SLit x)) in s::(build_list x' inc e) else [] in
 
@@ -126,9 +118,11 @@ let translate (stmt_list) =
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
-      | SArrayLit(e) -> 
-        let (t, _) = List.hd e in
-        L.const_array (ltype_of_typ t) (Array.of_list (List.map (expr builder var_map) e))
+      | SArrayLit(x) -> 
+        let (arr_t, _) = List.hd x in
+        let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length x)) "tmp" builder in
+        let _ = initialize_arr addr x var_map in
+        addr
       | SArrayGet(l, i) ->
         let addr = lookup l var_map in
         let idx = expr builder var_map i in
@@ -141,26 +135,28 @@ let translate (stmt_list) =
         let pointer = L.build_gep addr [|idx|] "tmp" builder in
         L.build_store e' pointer builder
       | SArrayRange(e1, i, e2) ->
+        let (arr_t, _) = e1 in
         let lis = match i with
           | Some x ->  build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2
           | None -> build_list e1 1 e2
         in
-        L.const_array (ltype_of_typ (fst e1)) (Array.of_list (List.map (expr builder var_map) lis))
+        let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length lis)) "tmp" builder in
+        let _ = initialize_arr addr lis var_map in
+        addr
       | _ -> to_imp "Expression not yet handled"
-    in 
+    
+    and map_build x o addr =
+      let x' = expr builder var_map x in
+      let arr_ptr = L.build_gep addr [| L.const_int i32_t o |]
+          "tmp" builder in
+      let _ = L.build_store x' arr_ptr builder
+      in o + 1
+    
+    and initialize_arr addr el var_map = List.fold_left (fun o e -> map_build e o addr) 0 el in
 
     let add_terminal builder f = match L.block_terminator (L.insertion_block builder) with
         Some _ -> ()
       | None -> ignore (f builder) in
-
-    let initialize_arr addr el var_map =
-      let map_build x o =
-          let x' = expr builder var_map x in
-          let arr_ptr = L.build_gep addr [| L.const_int i32_t o |]
-              "tmp" builder in
-          let _ = L.build_store x' arr_ptr builder
-          in o + 1
-      in List.fold_left (fun o e -> map_build e o) 0 el in
 
     (* match stmt with *)
     let rec stmt_builder (builder, var_map) = function 
@@ -175,27 +171,13 @@ let translate (stmt_list) =
         | SAsn (n, sexpr) ->
             let (_, e) = sexpr in
             let addr = lookup n var_map in
-            (match e with
-              | SArrayRange(e1, i, e2) ->
-                let (arr_t, _) = e1 in
-                let lis = match i with
-                  | Some x ->  build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2
-                  | None -> build_list e1 1 e2
-                in
-                let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length lis)) n builder in
-                let var_map = StringMap.add n addr var_map in
-                let _ = initialize_arr addr lis var_map in
-                (builder, var_map)
-              | SArrayLit(x) ->
-                let (arr_t, _) = List.hd x in
-                (* Adjust size of array *)
-                let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length x)) n builder in
-                let var_map = StringMap.add n addr var_map in
-                let _ = initialize_arr addr x var_map in
-                (builder, var_map)
-              | _ -> let e' = expr builder var_map sexpr in
-                let _ = L.build_store e' addr builder in
-                (builder, var_map))
+            let e' = expr builder var_map sexpr in
+            let var_map = (match e with
+                SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
+              | SArrayLit(x) -> StringMap.add n e' var_map
+              | _ -> ignore (L.build_store e' addr builder); var_map
+            ) in
+            (builder, var_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
