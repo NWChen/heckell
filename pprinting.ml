@@ -78,6 +78,7 @@ let rec string_of_expr = function
   | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
+  | _ -> "_"
 
 and string_of_stmt = function
     Asn(s, e) -> s ^ " = " ^ string_of_expr e
@@ -148,6 +149,7 @@ and string_of_sstmt = function
     in let str_sdecl = List.map helper sl
     in "(" ^ (String.concat ", " str_sdecl) ^ ") in " ^ string_of_sexpr e
   | SIf(e, stmts, stmts2) -> "if " ^ (string_of_sexpr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts)) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts2))
+  | _ -> "_"
 
 let string_of_sprogram sstmts = 
   String.concat "\n" (List.map string_of_sstmt sstmts) ^ "\n"

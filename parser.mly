@@ -12,7 +12,7 @@
 %token INT BOOL REAL CHAR STRING
 %token SET 
 %token ARRAY
-%token GET
+%token GET AT
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
 %token IF THEN ELSE WHILE DO
@@ -117,7 +117,7 @@ expr:
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
-| arr_op               { $1 }
+| arr_op                { $1 }
 | LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
@@ -161,7 +161,8 @@ expr:
     }
   
 arr_op:
-| expr DOT GET LPAREN expr RPAREN { ArrayGet($1, $5) }
+| ID DOT GET LPAREN expr RPAREN              { ArrayGet($1, $5) }
+| ID DOT AT LPAREN expr COMMA expr RPAREN    { ArrayAt($1, $5, $7) }
 
 
 single_or_tuple:

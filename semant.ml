@@ -96,6 +96,32 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Array(arr_t), SArrayLit (sexpr_list))
       )
+    | ArrayGet(l, i) ->
+      let idx = expr i scope in
+      let idx_t = match fst idx with
+        | PrimTyp(Int) -> PrimTyp(Int)
+        | _ -> raise (Failure ("index of array must be an integer"))
+      in
+      let arr_t = type_of_identifier l scope in
+      (PrimTyp(Int), SArrayGet(l, idx)) (* TODO undo hardcode *)
+    | ArrayAt(l, i, e) ->
+      let idx = expr i scope in
+      let idx_t = match fst idx with
+        | PrimTyp(Int) -> PrimTyp(Int)
+        | _ -> raise (Failure ("index of array must be an integer"))
+      in
+      let e' = expr e scope in (* TODO need to check type *)
+      let arr_t = type_of_identifier l scope in
+      (PrimTyp(Int), SArrayAt(l, idx, e')) (*TODO undo hardcode *)
+    | ArrayRange(e1, i, e2) -> 
+      let e1' = expr e1 scope in
+      let e2' = expr e2 scope in
+      let inc = match i with
+        | Some x -> Some (expr x scope)
+        | None -> None
+      in
+      let arr_t = fst e1' in
+      (Array(arr_t), SArrayRange(e1', inc, e2')) (*TODO more hardcode *)
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with
@@ -122,7 +148,7 @@ let check stmts =
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)
       in match typ with
-      | Func(in_typ, out_typ) as ex -> 
+      | Func(in_typ, out_typ) as ex ->
         let e_typ = fst sexpr in
         let err = "illegal assignment " ^ string_of_typ in_typ ^ " = " ^ 
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
