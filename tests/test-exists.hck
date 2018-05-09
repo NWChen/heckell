@@ -3,5 +3,7 @@ s1 = {1,2,3};
 
 let b : bool;
 b = 7 in s1;
+print("\(b)");
 
+b = 2 in s1;
 print("\(b)");

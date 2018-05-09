@@ -60,7 +60,8 @@ int parse_type(char *typ) {
 	int p = 0;
 	int curr_s = 0;
 	int len = strlen(typ);
-	for (int i = 0; i < len; i++) {
+	int i;
+	for (i = 0; i < len; i++) {
 		char c = typ[i];
 		if (c == ')') {
 			p--;
@@ -304,7 +305,8 @@ char *string_interpolation(char *frmt, int num, ...) {
   unsigned int tot_len = strlen(frmt) + 1;
   /* access all the arguments assigned to valist */
   char *curr;
-  for (int i = 0; i < num; i++) {
+  int i;
+  for (i = 0; i < num; i++) {
   	curr = va_arg(args, char*);
   	tot_len += strlen(curr);
   }
@@ -335,7 +337,8 @@ void free_args(int num, ...) {
 
   /* access all the arguments assigned to valist */
   char *curr;
-  for (int i = 0; i < num; i++) {
+  int i;
+  for (i = 0; i < num; i++) {
   	free(va_arg(args, char*));
   }
 	
@@ -572,7 +575,8 @@ struct hset_head *hset_from_list(char *typ, int is_map, int n, ...) {
 
   /* access all the arguments assigned to valist */
   char *curr;
-  for (int i = 0; i < n; i++) {
+  int i;
+  for (i = 0; i < n; i++) {
   	curr = va_arg(args, void*);
 
   	char *key = string_of(curr, ctyp);
