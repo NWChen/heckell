@@ -1,0 +1,3 @@
+let f:(int*int)->int;
+f(x,y) = x+y end
+print("\(f(3,5))");
