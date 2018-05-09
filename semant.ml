@@ -32,6 +32,10 @@ let check stmts =
           -> if left_t = PrimTyp(Int) then ignore(left_t)
     | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
+  let array_element_type arr_t = match arr_t with
+    Array(x) -> x
+    | _ -> raise (Failure "Not an array type")
+  in
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
   let rec expr e scope = match e with
@@ -45,7 +49,8 @@ let check stmts =
       let ty = match op with
         Add | Sub | Mul | Div when same && t1 = PrimTyp(Int)  -> PrimTyp(Int)
       | Add | Sub | Mul | Div when same && t1 = PrimTyp(Real) -> PrimTyp(Real)
-      | Equal | Neq            when same              -> PrimTyp(Bool)
+      | Add | Sub | Mul | Div when same && t1 = Set(PrimTyp(Int)) -> Set(PrimTyp(Int))
+      | Equal | Neq           when same              -> PrimTyp(Bool)
       | Less | Leq | Greater | Geq
                  when same && (t1 = PrimTyp(Int) || t1 = PrimTyp(Real)) -> PrimTyp(Bool)
       | And | Or when same && t1 = PrimTyp(Bool) -> PrimTyp(Bool)
@@ -100,21 +105,23 @@ let check stmts =
       )
     | ArrayGet(l, i) ->
       let idx = expr i scope in
-      let idx_t = match fst idx with
+      let _ = match fst idx with
         | PrimTyp(Int) -> PrimTyp(Int)
         | _ -> raise (Failure ("index of array must be an integer"))
       in
       let arr_t = type_of_identifier l scope in
-      (PrimTyp(Int), SArrayGet(l, idx)) (* TODO undo hardcode *)
+      (array_element_type arr_t, SArrayGet(l, idx))
     | ArrayAt(l, i, e) ->
       let idx = expr i scope in
-      let idx_t = match fst idx with
+      let _ = match fst idx with
         | PrimTyp(Int) -> PrimTyp(Int)
         | _ -> raise (Failure ("index of array must be an integer"))
       in
-      let e' = expr e scope in (* TODO need to check type *)
-      let arr_t = type_of_identifier l scope in
-      (PrimTyp(Int), SArrayAt(l, idx, e')) (*TODO undo hardcode *)
+      let e' = expr e scope in
+      let (new_ty, _) = e' in
+      let arr_t = array_element_type (type_of_identifier l scope) in
+      let _ = check_asn arr_t new_ty "New element needs to have same type as existing array elements" in
+      (arr_t, SArrayAt(l, idx, e'))
     | ArrayRange(e1, i, e2) -> 
       let e1' = expr e1 scope in
       let e2' = expr e2 scope in
@@ -122,8 +129,11 @@ let check stmts =
         | Some x -> Some (expr x scope)
         | None -> None
       in
+      let (e1_ty, _) = e1' in
+      let (e2_ty, _) = e2' in
+      let _ = check_asn e1_ty e2_ty "Array range elements must be the same type" in
       let arr_t = fst e1' in
-      (Array(arr_t), SArrayRange(e1', inc, e2')) (*TODO more hardcode *)
+      (Array(arr_t), SArrayRange(e1', inc, e2'))
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with

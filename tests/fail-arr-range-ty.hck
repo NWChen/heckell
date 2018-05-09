@@ -1,0 +1,2 @@
+let x: int array;
+x = [1 ... 10.5];
