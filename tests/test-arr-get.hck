@@ -1,7 +1,7 @@
 let x: int array;
 x = [1, 2, 3, 10, 24];
 
-print(x.get(3));
+print("\(x.get(3))");
 
 let y: real array;
 y = [1.0, 3.5];

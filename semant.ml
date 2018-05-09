@@ -27,10 +27,24 @@ let check stmts =
   let add_to_scope var typ scope = 
     {scope with symb = StringMap.add var typ scope.symb} 
   in
+  let check_map_set_type mt st =
+    match st with
+    | Set(Tuple [t1'; t2']) -> (
+      match mt with
+      | Map(t1, t2) ->
+        if t1 = t1' && t2 = t2' then true else false
+      | _ -> false )
+    | _ -> false
+  in
   let check_asn left_t right_t err = match right_t with
     | Set(PrimTyp(Char)) | Set(PrimTyp(Bool)) | Set(PrimTyp(Real))
           -> if left_t = PrimTyp(Int) then ignore(left_t)
-    | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
+    | _ -> 
+      match left_t with
+      | Map(_, _) ->  
+        if check_map_set_type left_t right_t then ignore(left_t) else raise (Failure err)
+      | _ ->
+        if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
   let array_element_type arr_t = match arr_t with
     Array(x) -> x
@@ -103,6 +117,25 @@ let check stmts =
         | false -> raise (Failure ("all elements of array must have type " ^ (string_of_typ arr_t)))
         | true -> (Array(arr_t), SArrayLit (sexpr_list))
       )
+    | AggAccessor(e1, e2) ->
+      let (e1_t, se1) = expr e1 scope in
+      let (e2_t, se2) = expr e2 scope in (
+      match e2_t with
+      | PrimTyp(Int) -> (
+        match e1_t with
+        | Tuple(tup_ts) -> (
+          match e2 with
+          | Lit(i) -> 
+            if i >= 0 && i < List.length tup_ts then 
+              (List.nth tup_ts i, SAggAccessor((e1_t, se1), (e2_t, se2)))
+            else raise(Failure("tuple index out of range"))
+          | _ -> raise(Failure("can only index tuple with int literals"))
+        ) 
+        | Array(arr_t) -> (arr_t, SAggAccessor((e1_t, se1), (e2_t, se2)))
+        | _ -> raise(Failure("cannot index object of type " ^ string_of_typ  e1_t)) 
+      )
+      | _ -> raise(Failure("need int to index collection"))
+    )
     | ArrayGet(l, i) ->
       let idx = expr i scope in
       let _ = match fst idx with
@@ -166,6 +199,12 @@ let check stmts =
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
         in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
+      | Map(in_typ, out_typ) as ex -> 
+        let e_typ = fst sexpr in
+        let err = "illegal assignment " ^ string_of_typ in_typ ^ " = " ^ 
+            string_of_typ e_typ ^ " in " ^ string_of_typ ex
+        in let _ = check_asn in_typ e_typ err
+        in (out_typ, SMapCall(var, sexpr))
       | _ -> raise (Failure ("non-function type stored")) )
     | _ -> raise (Failure ("not matched"))
   
@@ -179,17 +218,36 @@ let check stmts =
     | [] -> symbols
     | stmt :: tail -> match stmt with
       | Decl (var, t) -> check_stmt tail (add_to_scope var t symbols)
-      | Asn(var, e) as st ->
-        let left_t = type_of_identifier var symbols
-        and (right_t, e') = expr e symbols in
-        let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
-          string_of_typ right_t ^ " in " ^ string_of_stmt st
-        in let _ = check_asn left_t right_t err 
+      | Asn(vars, e) as st ->
+        let check_asn_elem var right_t =
+          let left_t = type_of_identifier var symbols in
+          let err = "illegal assignment " ^ string_of_typ left_t ^ " = " ^ 
+            string_of_typ right_t ^ " in " ^ string_of_stmt st
+          in ignore(check_asn left_t right_t err)
+        in let _ = match vars with
+          | [var] -> check_asn_elem var (fst (expr e symbols))
+          | _ -> match fst (expr e symbols) with
+            | Tuple(typs) -> List.iter2 check_asn_elem vars typs
+            | _ -> raise(Failure "cannot assign multiple vars with non-tuple")
         in check_stmt tail symbols
-      | AsnDecl(var, e) -> 
-        let (et, se) = expr e symbols in
-        check_stmt tail (add_to_scope var et symbols)
+      | AsnDecl(vars, e) -> (
+        match vars with
+        | [var] -> 
+          let (et, se) = expr e symbols in
+          check_stmt tail (add_to_scope var et symbols)
+        | _ -> 
+          let (et, _) = expr e symbols in
+          match et with
+          | Tuple(typs) -> 
+            let symbols' = 
+              try List.fold_left2 (fun s v t -> add_to_scope v t s) symbols vars typs 
+              with Invalid_argument(_) -> raise(Failure "vars and tuple typs should be of same length")
+            in
+            check_stmt tail symbols'
+          | _ -> raise(Failure "cannot assign multiple vars with non-tuple")
+        )
       | Expr e -> check_stmt tail symbols  
+      (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
       | While(p, s) -> check_bool_expr p; check_stmt s symbols
       | For(n, p, s) ->
@@ -202,15 +260,55 @@ let check stmts =
     | h :: t -> (
       match h with
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
-      | Asn(var, e) ->
-        (SAsn (var, expr e symbols)) :: (append_sstmt symbols t)
+      | Asn(vars, e) -> (
+        match vars with 
+        | [var] -> 
+          (* return exp if not map, else convert set to map *)
+          let check_is_map (typ, exp) =
+            let right_t = type_of_identifier var symbols in
+            let is_map =
+              check_map_set_type right_t typ
+            in match exp with
+            | SSetLit(el) when is_map -> (right_t, SMapLit(el))
+            | _ -> (typ, exp)
+          in
+          (SAsn (var, check_is_map (expr e symbols) )) :: (append_sstmt symbols t)
+        | _ ->
+          let rec expand_asn vars i = 
+            let acc = AggAccessor(e, Lit(i)) in
+            match vars with
+            | [var] -> (SAsn (var, expr acc symbols)) :: (append_sstmt symbols t)
+            | var::tl -> (SAsn (var, expr acc symbols)) :: (expand_asn tl (i+1))
+          in expand_asn vars 0 
+        )
       | Decl(var, tp) ->
         let symbols' = add_to_scope var tp symbols in
         (SDecl(var, tp)) :: (append_sstmt symbols' t)
-      | AsnDecl(var, e) ->
-        let (tp, se) = expr e symbols in
-        let symbols' = add_to_scope var tp symbols in
-        (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+      | AsnDecl(vars, e) -> (
+        match vars with 
+        | [var] -> 
+          let (tp, se) = expr e symbols in
+          let symbols' = add_to_scope var tp symbols in
+          (SDecl(var, tp)) :: (SAsn (var, (tp, se))) :: (append_sstmt symbols' t)
+        | _ ->
+          let (tp, _) = expr e symbols in
+          let typs = match tp with
+            | Tuple(typs) -> typs
+            | _ -> raise(Failure "check_stmt should have raised exception with non-tuple")
+          in
+          let asn = Asn(vars, e) in
+          let rec expand_decl vars typs = 
+            match (vars, typs) with
+            | [var], [typ] -> 
+              let symbols' = add_to_scope var typ symbols in
+              (SDecl (var, typ)) :: (append_sstmt symbols' (asn::t))
+            | var::vtl, typ::ttl -> 
+              let symbols' = add_to_scope var typ symbols in
+              (SDecl (var, typ)) :: (expand_decl vtl ttl)
+            | _ -> raise(Failure "vars and tuple typs should be of same length")
+          in expand_decl vars typs
+        )
+      (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> 
         let (tp, se) = expr p symbols in
         SIf((tp, se), append_sstmt symbols b1, append_sstmt symbols b2) :: (append_sstmt symbols t)
@@ -223,9 +321,7 @@ let check stmts =
     )
     | [] -> []
   in
-  let symbols_init = StringMap.add "print" (Func(PrimTyp(Int), PrimTyp(Int))) StringMap.empty in
-  let symbols_init = StringMap.add "print_string" (Func(String, PrimTyp(Int))) symbols_init in
-  let symbols_init = StringMap.add "print_set" (Func(Set(PrimTyp(Int)), PrimTyp(Int))) symbols_init in
+  let symbols_init = StringMap.add "print" (Func(String, PrimTyp(Int))) StringMap.empty in
   let g_scope = {symb = symbols_init; parent = None} in 
   let symbols = check_stmt stmts g_scope
   in append_sstmt symbols stmts

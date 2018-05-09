@@ -1,6 +1,6 @@
 if true then
-	print_string("first");
-	print_string("second");
+	print("first");
+	print("second");
 else 
-	print_string("third");
+	print("third");
 end

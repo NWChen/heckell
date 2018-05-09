@@ -1,0 +1,3 @@
+let m : int -> string map;
+m = {(3, "hello"), (4, "world"), (11, "wow")};
+print("\(m(3)) \(m(11)) \(m(4))");
