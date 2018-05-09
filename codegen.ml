@@ -45,6 +45,7 @@ let translate (stmt_list) =
     | A.PrimTyp(A.Bool) -> i8_t  (* for compatability with c types, can't use i1 *)
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
+    | A.Array(_)        -> ptr_t
     | A.Set(_)          -> ptr_t
     | A.Map(_)          -> ptr_t
     | A.Tuple(typs)     -> 

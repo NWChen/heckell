@@ -1,13 +1,3 @@
-let makeDFA : ((int set) * (char set) * (int * char -> int map) * int * (int set) * (char array)) -> (string -> bool);
-makeDFA(Q, A, t, q0, F, w) = 
-	let s : int;
-	s = q0;
-	for c in w do 
-		print("\(c)");
-	end	
-	s in F
-end
-
 let Q = {1,2,3};
 let A = {'0', '1'};
 
@@ -22,6 +12,18 @@ let F : int set;
 F = {3};
 let w : char array;
 w = ['0', '1', '0', '1', '1'];
+
+let makeDFA : ((int set) * (char set) * (int * char -> int map) * int * (int set) * (char array)) -> bool;
+makeDFA(Q, A, t, q0, F, w) = 
+	let c: char;
+	let s : int;
+	s = q0;
+	for c in w do 
+		print("\(c)");
+	end	
+	s in F
+end
+
 let DFA : bool;
 DFA = makeDFA(Q, A, t, q0, F, w);
 print("Does '11' appear in \(w)? \(DFA)");
