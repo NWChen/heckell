@@ -18,10 +18,7 @@ makeDFA(Q, A, t, q0, F, w) =
 	let c: char;
 	let s : int;
 	s = q0;
-	for c in w do 
-		print("\(c)");
-	end	
-	s in F
+	true
 end
 
 let DFA : bool;
