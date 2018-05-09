@@ -125,8 +125,12 @@ let translate (stmt_list) =
 
   let rec build_list s inc e = 
     let (t, _) = s in
-    let x = (get_int_or_float s) + inc in
-    if x <= (get_int_or_float e) + inc then let x' = (t, (SLit x)) in s::(build_list x' inc e) else [] in
+    let x = (get_int_or_float s) in
+    if inc > 0 then
+      if x <= (get_int_or_float e) then let x' = (t, (SLit (x + inc))) in s::(build_list x' inc e) else []
+    else
+      if x >= (get_int_or_float e) then let x' = (t, (SLit (x + inc))) in s::(build_list x' inc e) else []
+  in
 
   let build_statements (builder, var_map) stmt = 
     let rec expr builder var_map (_, e) = match e with
