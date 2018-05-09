@@ -1,7 +1,7 @@
 let x: int array;
 x = [1, 3 ... 7];
 
-print(x.get(0));
-print(x.get(1));
-print(x.get(2));
-print(x.get(3));
+print("\(x.get(0))");
+print("\(x.get(1))");
+print("\(x.get(2))");
+print("\(x.get(3))");

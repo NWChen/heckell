@@ -29,6 +29,7 @@ let string_of_prim_typ = function
 
 let rec string_of_typ = function
     Set(t) -> "(" ^ string_of_typ t ^ " set)"
+  | Map(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ " map)"
   | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
   | Tuple(tl) -> "(" ^ (String.concat " * " (List.map string_of_typ tl)) ^ ")" 
   | Array(t) -> "(" ^ string_of_typ t ^ " array)"
@@ -75,15 +76,16 @@ let rec string_of_expr = function
                   ^ " | " ^ string_of_stmt s 
                   ^ ", " ^ string_of_expr e2 ^ "}"
     )
+  | AggAccessor(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
   | _ -> "_"
 
 and string_of_stmt = function
-    Asn(s, e) -> s ^ " = " ^ string_of_expr e
+    Asn(sl, e) -> (String.concat "," sl) ^ " = " ^ string_of_expr e
   | Decl(s, t) -> "let " ^ s ^ ": " ^ string_of_typ t
-  | AsnDecl(s, e) -> "let " ^ s ^ " = " ^ string_of_expr e
+  | AsnDecl(sl, e) -> "let " ^ (String.concat "," sl) ^ " = " ^ string_of_expr e
   | Expr(e) -> string_of_expr e
   | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
   | If(e, stmts, stmts2) -> "if " ^ (string_of_expr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts))) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts2)))
@@ -116,11 +118,11 @@ let rec string_of_sexpr (t, e) =
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUniop(o, e) -> string_of_uop o ^ string_of_sexpr e
-  | SFuncCall(s, e) -> (
+  | SFuncCall(s, e) | SMapCall(s, e) -> (
     match e with
     | (_, STupleLit(_)) -> s ^ " " ^ string_of_sexpr e
     | x -> s ^ " (" ^ string_of_sexpr x ^ ")" )
-  | SSetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "}"
+  | SSetLit(el) | SMapLit(el) -> "{" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "}"
   | SArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "]"
   | SArrayRange(e1, e2, e3) -> 
     (match e2 with 
@@ -136,6 +138,7 @@ let rec string_of_sexpr (t, e) =
                   ^ " | " ^ string_of_sstmt s 
                   ^ ", " ^ string_of_sexpr e2 ^ "}"
     )
+  | SAggAccessor(e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]"
   | SFuncDef(formals, stmts) ->
       "(\n    " ^ (String.concat ";\n    " (List.map string_of_sstmt (formals@stmts))) ^ "\n  )"
   ) ^ " : " ^ (string_of_typ t) ^ ")"

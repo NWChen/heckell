@@ -10,4 +10,4 @@ else
 	c = c - 1;
 end
 
-print(c);
+print("\(c)");

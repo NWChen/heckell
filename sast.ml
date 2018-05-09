@@ -15,12 +15,15 @@ and sx =
   | STupleLit of sexpr list
   | SSetLit of sexpr list
   | SSetBuilder of sexpr option * sstmt * sexpr
+  | SMapLit of sexpr list (* list of 2-tuples *)
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
+  | SAggAccessor of sexpr * sexpr
   | SArrayGet of string * sexpr
   | SArrayAt of string * sexpr * sexpr
   | SFuncDef of sstmt list * sstmt list (* formals to decl * function body *)
   | SFuncCall of string * sexpr
+  | SMapCall of string * sexpr
 
 and sstmt =
   | SAsn of string * sexpr

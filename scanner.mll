@@ -64,6 +64,7 @@ rule tokenize = parse
 | "bool"    { BOOL }
 | "char"    { CHAR }
 | "set"     { SET }
+| "map"     { MAP }
 | "array"   { ARRAY }
 | "string"  { STRING }
 | "let"     { LET }

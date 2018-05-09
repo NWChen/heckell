@@ -5,5 +5,5 @@ let y: int;
 while x > 0 do
     y = 1;
 	x = x - y;
-	print(x);
+	print("\(x)");
 end
