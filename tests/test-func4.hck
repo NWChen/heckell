@@ -1,3 +1,0 @@
-let g: int->int;
-g(x) = x end
-print(g(2018));
