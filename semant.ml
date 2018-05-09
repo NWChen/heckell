@@ -128,6 +128,9 @@ let check stmts =
         | Some x -> Some (expr x scope)
         | None -> None
       in
+      let (e1_ty, _) = e1' in
+      let (e2_ty, _) = e2' in
+      let _ = check_asn e1_ty e2_ty "Array range elements must be the same type" in
       let arr_t = fst e1' in
       (Array(arr_t), SArrayRange(e1', inc, e2'))
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
