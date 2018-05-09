@@ -173,6 +173,7 @@ let translate (stmt_list) =
       L.build_global_stringptr (string_of_typ set) "set" builder
     | A.Map(t1, t2)     ->
       L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
+    | x             -> print_string (string_of_typ x); int_str
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure ("ERROR: variable " ^ n ^ " not found."))
