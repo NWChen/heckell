@@ -251,7 +251,10 @@ let check stmts =
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
       | While(p, s) -> check_bool_expr p; check_stmt s symbols
       | For(n, p, s) ->
-        let t = PrimTyp(Int) in
+        let e = expr p symbols in
+        let t = (match (fst e) with
+        | Array(arr_t) -> arr_t
+        | Set(set_t) -> set_t) in
         let map = add_to_scope n t symbols in
         check_stmt s map (* TODO need to check type of p and that n is var *)
 

@@ -525,7 +525,11 @@ let translate (stmt_list) =
               | SId(x) -> lookup x len_map
               | _ -> raise (Failure "incorrect type")
             in            
-            let var = L.build_alloca i32_t n builder in (* hardcoded type *)
+            let ty = (match (fst a) with
+              | A.Array(arr_t) -> arr_t
+              | A.Set(set_t) -> set_t)
+            in
+            let var = L.build_alloca (ltype_of_typ ty) n builder in (* hardcoded type *)
 
             (match (fst a) with
               | A.Array(_) -> 
