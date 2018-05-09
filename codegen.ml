@@ -56,8 +56,8 @@ let translate (stmt_list) =
         | A.Tuple(tl) -> Array.of_list (List.map ltype_of_typ tl)
         | t -> [| ltype_of_typ t |]
       in
-      let ltyp = L.function_type (ltype_of_typ ot) (split_tup it) in
-      L.dump_type ltyp ; ltyp
+      let f_t = L.function_type (ltype_of_typ ot) (split_tup it) in
+      L.pointer_type f_t
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -216,11 +216,22 @@ let translate (stmt_list) =
         let typ_str = strtype_of_typ (fst (List.hd ml)) in
         let params = Array.of_list (typ_str::is_map::addr_n::addrs) in
         L.build_call hset_from_list_func params "hset_from_list" builder 
-      | SId s -> L.build_load (lookup s var_map) s builder
+      | SId s -> (
+        match typ with
+        | Func(_, _) -> lookup s var_map
+        | _ -> L.build_load (lookup s var_map) s builder
+      )
       | SStringLit s -> L.build_global_stringptr s ".str" builder
       | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
       | SFuncCall (s, e) ->
         let result = s ^ "_result" and f = StringMap.find s var_map in (* f: llvalue representing function <s> *)
+        let addr_typ = L.type_of f in
+        let rtyp = ltype_of_typ (A.Func(fst e,typ)) in
+        let f = 
+          if addr_typ = (L.pointer_type rtyp) then
+            L.build_load f s builder
+          else f 
+        in
         L.build_call f (match e with
           | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el)  (* TODO revise el evaluation *)
           | x -> [| expr builder var_map x |]
@@ -427,7 +438,15 @@ let translate (stmt_list) =
             ) in (builder, var_map)
 
         | SAsn (n, sexpr) -> let var_map = (match sexpr with
-
+            | (A.Func(_), SId(_)) | (A.Func(_), SFuncCall(_, _)) ->
+                let f_del = StringMap.find n var_map in
+                let _ = L.delete_function f_del in
+                (* Redeclare func as pts *)
+                let (t, e) = sexpr in
+                let lf_addr = L.build_alloca (ltype_of_typ t) n builder in
+                let var_map = StringMap.add n lf_addr var_map in
+                let llval = expr builder var_map sexpr in
+                let _ = L.build_store llval lf_addr builder in var_map
             (* Function definition *)
             | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
 

@@ -1,0 +1,11 @@
+let f : int -> (int -> int);
+f(x) =
+  print("In f: \(x)");
+  let g : int -> int;
+  g(y) = y+2 end
+  g
+end
+
+let h = f(5);
+print("Outside f: \(h(2))");
+

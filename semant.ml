@@ -37,6 +37,7 @@ let check stmts =
     | _ -> false
   in
   let check_asn left_t right_t err = match right_t with
+    (* remove this *)
     | Set(PrimTyp(Char)) | Set(PrimTyp(Bool)) | Set(PrimTyp(Real))
           -> if left_t = PrimTyp(Int) then ignore(left_t)
     | _ -> 
