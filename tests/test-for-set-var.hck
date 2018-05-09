@@ -2,5 +2,5 @@ let x: int set;
 x = {5, 10, 13};
 
 for i in x do
-	print(i);
+	print("\(i)");
 end

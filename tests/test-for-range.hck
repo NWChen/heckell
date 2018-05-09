@@ -2,5 +2,5 @@ let sum: int;
 sum = 0;
 for x in [0 ... 5] do
     sum = sum + x;
-    print(sum);
+    print("\(sum)");
 end

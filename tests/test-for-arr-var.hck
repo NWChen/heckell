@@ -2,5 +2,5 @@ let x: int array;
 x = [1, 2, 3];
 
 for i in x do
-	print(i);
+	print("\(i)");
 end

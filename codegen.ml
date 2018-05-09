@@ -30,21 +30,25 @@ let translate (stmt_list) =
   let i1_t       = L.i1_type        context in
   let f32_t      = L.float_type     context in
   let str_t      = L.pointer_type   i8_t    in
+  let ptr_t      = L.pointer_type   i8_t    in
   let intp_t     = L.pointer_type   i32_t   in
-  let void       = L.void_type      context in
+  let void_t     = L.void_type      context in
   let i1_t       = L.i1_type        context in
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
   let the_module = L.create_module context "Heckell" in
 
   (* Convert Heckell types to LLVM types *)
-  let ltype_of_typ = function
+  let rec ltype_of_typ = function
       A.PrimTyp(A.Int)  -> i32_t
     | A.PrimTyp(A.Char) -> i8_t
-    | A.PrimTyp(A.Bool) -> i1_t
+    | A.PrimTyp(A.Bool) -> i8_t  (* for compatability with c types, can't use i1 *)
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
-    | A.Set(_)          -> str_t
+    | A.Set(_)          -> ptr_t
+    | A.Map(_)          -> ptr_t
+    | A.Tuple(typs)     -> 
+      L.struct_type context (Array.of_list (List.map ltype_of_typ typs))
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -58,45 +62,66 @@ let translate (stmt_list) =
      are all i8 pointers to LLVM *)
   (* init_hset returns hset_head pointer (NULL) *)
   let init_hset_t : L.lltype = 
-      L.var_arg_function_type str_t [| (* void *) |] in
+      L.function_type ptr_t [| (* void *) |] in
   let init_hset_func : L.llvalue =
       L.declare_function "init_hset" init_hset_t the_module in
-   
+
+  (* Takes type as str, is_map bool, number of elems in list *)
+  let hset_from_list_t : L.lltype =
+      L.var_arg_function_type ptr_t [| str_t; i32_t; i32_t |] in
+  let hset_from_list_func : L.llvalue =
+      L.declare_function "hset_from_list" hset_from_list_t the_module in
+  
+  let find_val_t : L.lltype =
+      L.function_type ptr_t [| ptr_t; ptr_t; str_t |] in
+  let find_val_func : L.llvalue =
+      L.declare_function "find_val" find_val_t the_module in
+
   (* add_val returns new hset_head pointer and
      takes string of value, void pointer to value,
      type string, and original hset_head pointer*)
   let add_val_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let add_val_func : L.llvalue =
       L.declare_function "add_val" add_val_t the_module in
 
   (* del_val returns new hset_head pointer and
      takes string of value, type string, and original hset_head pointer *)
   let del_val_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let del_val_func : L.llvalue =
       L.declare_function "del_val" del_val_t the_module in
 
   let hset_union_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let hset_union_func : L.llvalue =
       L.declare_function "hset_union" hset_union_t the_module in
 
   let hset_diff_t : L.lltype = 
-      L.var_arg_function_type str_t [| str_t; str_t; str_t |] in
+      L.function_type str_t [| str_t; str_t; str_t |] in
   let hset_diff_func : L.llvalue =
       L.declare_function "hset_diff" hset_diff_t the_module in
 
   (* destroy_hset takes hset_head pointer to be destroyed *)
   let destroy_hset_t : L.lltype = 
-      L.var_arg_function_type void [| str_t |] in
+      L.function_type void_t [| str_t |] in
   let destroy_hset_func : L.llvalue =
       L.declare_function "destroy_hset" destroy_hset_t the_module in
 
-  let print_hset_t : L.lltype =
-      L.var_arg_function_type void [| str_t |] in
-  let print_hset_func : L.llvalue =
-      L.declare_function "print_hset" print_hset_t the_module in
+  let string_of_t : L.lltype =
+      L.function_type str_t [| ptr_t ; str_t |] in
+  let string_of_func : L.llvalue = 
+      L.declare_function "string_of" string_of_t the_module in 
+  
+  let string_interpolation_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t ; i32_t |] in
+  let string_interpolation_func : L.llvalue =
+      L.declare_function "string_interpolation" string_interpolation_t the_module in
+
+  let free_args_t : L.lltype =
+      L.var_arg_function_type void_t [| i32_t |] in
+  let free_args_func : L.llvalue =
+      L.declare_function "free_args" free_args_t the_module in
 
   let hset_len_t : L.lltype =
       L.var_arg_function_type i32_t [| str_t |] in
@@ -123,24 +148,28 @@ let translate (stmt_list) =
   let builder = L.builder_at_end context (L.entry_block the_function) in
 
   (* Create a pointer to a format string for printf *)
-  let int_format_str      = L.build_global_stringptr "%d\n" "fmt" builder 
-  and str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
-  and set_int_format_str  = L.build_global_stringptr "%d "  "set_str" builder
-  and setl_format_str     = L.build_global_stringptr "{ "   "setl_str" builder
-  and setr_format_str     = L.build_global_stringptr "}\n"  "setr_str" builder
+  let str_format_str      = L.build_global_stringptr "%s\n" "fmt_str" builder
   and int_str             = L.build_global_stringptr "Int"  "int" builder
   and real_str            = L.build_global_stringptr "Real" "real" builder
   and bool_str            = L.build_global_stringptr "Bool" "bool" builder
   and char_str            = L.build_global_stringptr "Char" "char" builder
+  and string_str          = L.build_global_stringptr "String" "string" builder
   in
   let strtype_of_typ = function
       A.PrimTyp(A.Int)  -> int_str
     | A.PrimTyp(A.Char) -> char_str
     | A.PrimTyp(A.Bool) -> bool_str
     | A.PrimTyp(A.Real) -> real_str
+    | A.String          -> string_str
+    | A.Tuple(_) as tup -> 
+      L.build_global_stringptr (string_of_typ tup) "tup" builder
+    | A.Set(_) as set   -> 
+      L.build_global_stringptr (string_of_typ set) "set" builder
+    | A.Map(t1, t2)     ->
+      L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
   in
   let lookup n map = try StringMap.find n map
-                     with Not_found -> raise (Failure "ERROR: variable not found.")
+                     with Not_found -> raise (Failure ("ERROR: variable " ^ n ^ " not found."))
   in
 
   let get_int_or_float e = match e with
@@ -158,20 +187,68 @@ let translate (stmt_list) =
   in
 
   let build_statements (builder, var_map, len_map) stmt = 
-    let rec expr builder var_map (t, e) = match e with
+    let rec expr builder var_map (typ, e) = match e with
         SLit i -> L.const_int i32_t i
       | SCharLit c -> L.const_int i8_t (Char.code c)
-      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SBoolLit b -> L.const_int i8_t (if b then 1 else 0)
       | SRealLit r -> L.const_float f32_t r
       | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
           in add_list_vals sl (fst (List.hd sl)) hset_ptr  
-      | SId s -> (match t with
+      | SMapLit ml -> 
+        let expr_to_addrs (typ, se) =
+          let llval = expr builder var_map (typ, se) in
+          let val_addr = L.build_alloca (ltype_of_typ typ) "" builder in
+          let _ = L.build_store llval val_addr builder in
+          L.build_bitcast val_addr ptr_t "bitcast" builder 
+        in
+        let addrs = List.map expr_to_addrs ml in
+        let addr_n = L.const_int i32_t (List.length addrs) in
+        let is_map = L.const_int i32_t 1 in
+        let typ_str = strtype_of_typ (fst (List.hd ml)) in
+        let params = Array.of_list (typ_str::is_map::addr_n::addrs) in
+        L.build_call hset_from_list_func params "hset_from_list" builder 
+      | SId s -> (match typ with
             A.Array(x) -> lookup s var_map
           | _ -> L.build_load (lookup s var_map) s builder)
       | SStringLit s -> L.build_global_stringptr s ".str" builder
-      | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder 
-      | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
-      | SFuncCall ("print_set", e) -> L.build_call print_hset_func [| (expr builder var_map e) |] "" builder
+      | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
+      | SFuncCall (s, e) ->
+        let result = s ^ "_result" and f = StringMap.find s var_map in (* f: llvalue representing function <s> *)
+        L.build_call f (match e with
+          | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el)  (* TODO revise el evaluation *)
+          | x -> [| expr builder var_map x |]
+        ) result builder
+      | SInterStringLit(sl, el) -> 
+        let frmt = String.concat "%s" sl in
+        let llfrmt = L.build_global_stringptr frmt ".str" builder in
+        let expr_to_llstr (typ, se) =
+          let llval = expr builder var_map (typ, se) in
+          let val_addr = L.build_alloca (ltype_of_typ typ) "" builder in
+          let _ = L.build_store llval val_addr builder in
+          let bitcast = L.build_bitcast val_addr ptr_t "bitcast" builder in
+          L.build_call string_of_func [| bitcast ; strtype_of_typ typ |] "string_of" builder
+        in
+        let str_addrs = List.map expr_to_llstr el in
+        let str_num = L.const_int i32_t (List.length str_addrs) in
+        let params = Array.of_list (llfrmt::str_num::str_addrs) in
+        let fcall = L.build_call string_interpolation_func params "temp" builder in
+        L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
+      | SMapCall(m, se) -> 
+        let typ' = fst se in
+        let llval_key = expr builder var_map se in
+        let lltype_typ1 = ltype_of_typ typ' in
+        let lltype_typ2 = ltype_of_typ typ in
+        let lltyp_tup = L.struct_type context [| lltype_typ1; lltype_typ2 |] in
+        let key_addr = L.build_alloca lltype_typ1 "" builder in
+        let _ = L.build_store llval_key key_addr builder in
+        let bc_key = L.build_bitcast key_addr ptr_t "bitcast" builder in
+        let llval_map = lookup m var_map in
+        let map_ptr = L.build_load llval_map m builder in
+        let str_typ = strtype_of_typ typ' in
+        let res = L.build_call find_val_func [| map_ptr; bc_key; str_typ |] "find_val" builder in
+        let bc_res = L.build_bitcast res (L.pointer_type lltyp_tup) "bitcast" builder in
+        let gep_ptr = L.build_struct_gep bc_res 1 "" builder in
+        L.build_load gep_ptr m builder
       | SBinop (e1, op, e2) -> 
         let (t, _) = e1
         and e1' = expr builder var_map e1
@@ -214,6 +291,29 @@ let translate (stmt_list) =
           A.Neg when t = A.PrimTyp(A.Real) -> L.build_fneg 
         | A.Neg                            -> L.build_neg
         ) e' "tmp" builder
+      | STupleLit(sel) ->
+        let llvals = List.map (expr builder var_map) sel in
+        let tup_addr = L.build_alloca (ltype_of_typ typ) "temp" builder in
+        let store_val i v = 
+          let gep_ptr = L.build_struct_gep tup_addr i "" builder in
+          ignore(L.build_store v gep_ptr builder)
+        in
+        List.iteri store_val llvals; L.build_load tup_addr "" builder
+      | SAggAccessor(e1, e2) -> (
+        let llptr = expr builder var_map e1 in
+        match fst e1 with
+        | A.Tuple(_) -> (
+          match snd e2 with
+          | SLit(i) -> 
+            let gep_ptr = L.build_struct_gep llptr i "" builder in
+            L.build_load gep_ptr "" builder
+          | _ -> raise(Failure "semant shouldn't have allowed non-literal int index for tuple") 
+          )
+        | A.Array(_) -> 
+          let idx = expr builder var_map e2 in
+          let pointer = L.build_gep llptr [|idx|] "tmp" builder in
+          L.build_load pointer "tmp" builder
+        )
       | SArrayLit(x) -> 
         let (arr_t, _) = List.hd x in
         let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length x)) "tmp" builder in
@@ -243,7 +343,7 @@ let translate (stmt_list) =
         let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length lis)) "tmp" builder in
         let _ = initialize_arr addr lis var_map in
         addr
-      | _ -> to_imp "Expression not yet handled"
+      | _ as e -> to_imp (string_of_sexpr (typ, e))
     
     and map_build x o addr =
       let x' = expr builder var_map x in
@@ -288,32 +388,92 @@ let translate (stmt_list) =
 
     (* match stmt with *)
     let rec stmt_builder (builder, var_map, len_map) = function 
-          SExpr e -> ignore(expr builder var_map e); (builder, var_map, len_map)
+        | SExpr e -> let _ = expr builder var_map e in (builder, var_map, len_map)
         (* Handle a declaration *)
         | SDecl (n, t) ->
-          let addr = match t with
-             (* A bit of a hack here. We initialize the array to have size 1 when declared and adjust the size later when the array is assigned. *)
-            | A.Array(t) -> L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 1) n builder
-            | _ -> L.build_alloca (ltype_of_typ t) n builder
-          in (builder, StringMap.add n addr var_map, len_map)
-        | SAsn (n, sexpr) -> 
-            let (_, e) = sexpr in
-            let addr = lookup n var_map in
-            let e' = expr builder var_map sexpr in
-            let var_map, len_map = (match e with
-                SArrayRange(e1, i, e2) -> 
-                  let x = (match i with
-                      Some x -> (get_int_or_float x)
-                    | None -> 1) in
-                  let len = List.length (build_list e1 (x - (get_int_or_float e1)) e2) in
-                  (StringMap.add n e' var_map, StringMap.add n len len_map)
-              | SArrayLit(x) -> (StringMap.add n e' var_map, StringMap.add n (List.length x) len_map)
-              | SSetLit(x) -> ignore(L.build_store e' addr builder); (var_map, StringMap.add n (List.length x) len_map)
-              | _ -> ignore(L.build_store e' addr builder); (var_map, len_map)
-            ) in
-            (builder, var_map, len_map)
+            let allocate n' t' b = L.build_alloca (ltype_of_typ t') n' b in (* t' != t passed to SDecl; `b` is a builder *)
+            let var_map = (match t with
+              (* primitive type declaration *)
+              | A.PrimTyp(_) -> 
+                  StringMap.add n (allocate n t builder) var_map (* L.build_alloca (ltype_of_typ t) n builder in*)
+              | A.Array(t) -> (* A bit of a hack here. We initialize the array to have size 1 when declared and adjust the size later when the array is assigned. *)
+                let addr = L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 1) n builder in
+                StringMap.add n addr var_map
+              | A.Func(in_t, out_t) -> (* Function declaration. *)
+                let name_formals formals = List.mapi (fun i _ -> n ^ (string_of_int i)) formals in (* we only know their type so far - thus formals are temporarily named n0, n1, ... where n = function name *) (* TODO check these temp names in Sasn. *)
+                let formal_typs = match in_t with
+                  | A.PrimTyp(_) -> [in_t]
+                  | A.Tuple(l) -> l
+                in
+                let formal_typs = Array.of_list (List.map (fun t -> ltype_of_typ t) formal_typs) in
+                let func_typ = L.function_type (ltype_of_typ out_t) formal_typs in
+                let func_def = L.define_function n func_typ the_module in
+                let this_function = L.builder_at_end context (L.entry_block func_def) in
+                let var_map = (match in_t with
+                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
+                    StringMap.add formal (allocate formal in_t this_function) var_map
+                  | A.Tuple(l) -> let formals = name_formals l in
+                    List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l) in
+                StringMap.add n func_def var_map
+              | _ -> let addr = L.build_alloca (ltype_of_typ t) n builder in
+                StringMap.add n addr var_map
+            ) in (builder, var_map, len_map)
+
+        | SAsn (n, sexpr) -> let var_map, len_map = (match sexpr with
+
+            (* Function definition *)
+            | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
+
+                (* Build formals, declaration, etc. *)
+                let formals = List.mapi (fun i _ -> n ^ (string_of_int i)) args in
+                let formals' = List.map (fun arg -> match arg with (* Formals, now attached to names, specified in function assignment(definition). *)
+                  | SDecl (n, _) -> n
+                  | _ -> raise (Failure ("Improperly specified argument (expected declaration)."))
+                ) args in
+                let formal_instrs = List.map (fun f -> StringMap.find f var_map) formals in
+                let var_map = List.fold_left2 (fun m f f' -> (* Replace temporary formal name bindings in `var_map` with new names. *)
+                  let instr = StringMap.find f m in
+                  (StringMap.add f' instr (StringMap.remove f m))
+                ) var_map formals formals' in
+                let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in
+                let _ = List.iter2 (fun f f' -> L.replace_all_uses_with f f') formal_instrs formal_instrs' in (* Replace temporary (<n>0, <n>1, ...) formal names in LLVM with new (user-specified) names. *)
+                (* Generate LLVM in the basic block entered by function <n> *)
+                let this_function = StringMap.find n var_map in
+                let builder = L.builder_at_end context (L.entry_block this_function) in
+                let _ = List.map2 (fun (SDecl (n, t)) p ->
+                  L.build_store p (StringMap.find n var_map) builder
+                ) args (Array.to_list (L.params this_function)) in
+                let (builder, _, _) = List.fold_left stmt_builder (builder, var_map, len_map) stmts in
+
+                (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
+                let rec return_expr revd_stmts = match revd_stmts with
+                  | [] -> (A.PrimTyp(A.Int), SLit(0)) (* `heckell` returns `0` when no expression inside a function can be evaluated (nothing to return). *)
+                  | SExpr(e') :: _ -> e'
+                  | _ :: tl -> return_expr tl
+                in  
+                let e' = expr builder var_map (return_expr (List.rev stmts)) in
+                let return_instr = L.build_ret e' in
+                let _ = add_terminal builder return_instr in
+                (var_map, len_map)
+
+            | _ -> let (_, e) = sexpr in
+                let addr = lookup n var_map in
+                let e' = expr builder var_map sexpr in
+                match e with
+                  SArrayRange(e1, i, e2) -> 
+                    let x = (match i with
+                        Some x -> (get_int_or_float x)
+                      | None -> 1) in
+                    let len = List.length (build_list e1 (x - (get_int_or_float e1)) e2) in
+                    (StringMap.add n e' var_map, StringMap.add n len len_map)
+                | SArrayLit(x) -> (StringMap.add n e' var_map, StringMap.add n (List.length x) len_map)
+                | SSetLit(x) -> ignore(L.build_store e' addr builder); (var_map, StringMap.add n (List.length x) len_map)
+                | _ -> let _ = L.build_store e' addr builder in (var_map, len_map)
+              ) in (builder, var_map, len_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
+            (* cast to bool from i32 *)
+            let bool_val = L.build_trunc bool_val i1_t "" builder in
             let merge_bb = L.append_block context "merge" the_function in
             let branch_instr = L.build_br merge_bb in
 
@@ -340,6 +500,7 @@ let translate (stmt_list) =
 
             let pred_builder = L.builder_at_end context pred_bb in
             let bool_val = expr pred_builder var_map predicate in
+            let bool_val = L.build_trunc bool_val i1_t "" builder in
 
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
