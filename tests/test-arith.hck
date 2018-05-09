@@ -1,0 +1,10 @@
+let a: int;
+a = 5;
+
+let b: int;
+b = 6;
+
+let c: int;
+c = a + 7;
+
+print("\(c)");

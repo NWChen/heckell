@@ -1,0 +1,3 @@
+let foo: int;
+foo = -4;
+print("\(foo)");

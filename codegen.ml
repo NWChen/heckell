@@ -400,6 +400,8 @@ let translate (stmt_list) =
             (builder, var_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
+            (* cast to bool from i32 *)
+            let bool_val = L.build_trunc bool_val i1_t "" builder in
             let merge_bb = L.append_block context "merge" the_function in
             let branch_instr = L.build_br merge_bb in
 
@@ -426,6 +428,7 @@ let translate (stmt_list) =
 
             let pred_builder = L.builder_at_end context pred_bb in
             let bool_val = expr pred_builder var_map predicate in
+            let bool_val = L.build_trunc bool_val i1_t "" builder in
 
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in

@@ -1,0 +1,6 @@
+if true then
+	print("first");
+	print("second");
+else 
+	print("third");
+end

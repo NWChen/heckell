@@ -1,0 +1,11 @@
+let x: int array;
+x = [1, 2, 3];
+
+print("\(x.get(1))");
+print("\(x.get(2))");
+
+x.at(1, 500);
+x.at(2, 40);
+
+print("\(x.get(1))");
+print("\(x.get(2))");

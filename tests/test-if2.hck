@@ -1,0 +1,13 @@
+let b: int;
+b = 5;
+
+let c: int;
+c = 0;
+
+if b < 0 then
+	c = c + 4;
+else
+	c = c - 1;
+end
+
+print("\(c)");
