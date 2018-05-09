@@ -30,6 +30,8 @@ type expr =
   | SetLit of expr list
   | ArrayLit of expr list
   | ArrayRange of expr * expr option * expr
+  | ArrayGet of string * expr
+  | ArrayAt of string * expr * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
   | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)
@@ -44,6 +46,7 @@ and stmt =
   | Iter of string list * expr
   | If of expr * stmt list * stmt list
   | While of expr * stmt list
+  | For of string * expr * stmt list
 
 type program = stmt list
 (* TODO: op for `(...)` (PARAMS) *)

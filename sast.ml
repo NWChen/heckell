@@ -17,6 +17,8 @@ and sx =
   | SSetBuilder of sexpr option * sstmt * sexpr
   | SArrayLit of sexpr list
   | SArrayRange of sexpr * sexpr option * sexpr
+  | SArrayGet of string * sexpr
+  | SArrayAt of string * sexpr * sexpr
   | SFuncDef of sstmt list * sstmt list (* formals to decl * function body *)
   | SFuncCall of string * sexpr
 
@@ -27,5 +29,6 @@ and sstmt =
   | SIter of sstmt list * sexpr (* decl list * set *)
   | SIf of sexpr * sstmt list * sstmt list
   | SWhile of sexpr * sstmt list
+  | SFor of string * sexpr * sstmt list
 
 type sprogram = sstmt list
