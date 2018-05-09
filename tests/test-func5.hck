@@ -1,0 +1,7 @@
+let foo: (string * int * real) -> int;
+foo(a, b, c) = 
+  let i: int;
+  i = 1;
+  b + i
+end
+print("\(foo("baz", 10, 2.0))");

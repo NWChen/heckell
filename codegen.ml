@@ -453,7 +453,7 @@ let translate (stmt_list) =
                 let _ = List.map2 (fun (SDecl (n, t)) p ->
                   L.build_store p (StringMap.find n var_map) builder
                 ) args (Array.to_list (L.params this_function)) in
-                let (builder, _, _) = List.fold_left stmt_builder (builder, var_map, len_map) stmts in
+                let (builder, var_map, _) = List.fold_left stmt_builder (builder, var_map, len_map) stmts in
 
                 (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
                 let rec return_expr revd_stmts = match revd_stmts with
