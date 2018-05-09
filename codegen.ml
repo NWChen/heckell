@@ -440,7 +440,8 @@ let translate (stmt_list) =
                 let _ = List.map2 (fun (SDecl (n, t)) p ->
                   L.build_store p (StringMap.find n var_map) builder
                 ) args (Array.to_list (L.params this_function)) in
-                let (builder, _) = List.fold_left stmt_builder (builder, var_map) stmts in
+                let rev_stmts = List.rev stmts in
+                let (builder, _) = List.fold_left stmt_builder (builder, var_map) (List.rev (List.tl rev_stmts)) in
 
                 (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
                 let rec return_expr revd_stmts = match revd_stmts with
@@ -448,7 +449,7 @@ let translate (stmt_list) =
                   | SExpr(e') :: _ -> e'
                   | _ :: tl -> return_expr tl
                 in  
-                let e' = expr builder var_map (return_expr (List.rev stmts)) in
+                let e' = expr builder var_map (return_expr rev_stmts) in
                 let return_instr = L.build_ret e' in
                 let _ = add_terminal builder return_instr in
                   var_map
