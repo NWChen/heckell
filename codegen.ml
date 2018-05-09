@@ -148,6 +148,11 @@ let translate (stmt_list) =
   let get_val_func : L.llvalue =
       L.declare_function "get_val" get_val_t the_module in
 
+  let has_key_t : L.lltype = 
+      L.var_arg_function_type i8_t [| str_t; str_t; str_t |] in
+  let has_key_func : L.llvalue =
+      L.declare_function "has_key" has_key_t the_module in    
+
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Make the LLVM module "aware" of the main function *)
@@ -272,6 +277,7 @@ let translate (stmt_list) =
         L.build_load gep_ptr m builder
       | SBinop (e1, op, e2) -> 
         let (t, _) = e1
+        and (t2, _) = e2
         and e1' = expr builder var_map e1
         and e2' = expr builder var_map e2 in
         if t = A.PrimTyp(A.Real) then (match op with 
@@ -288,9 +294,13 @@ let translate (stmt_list) =
         | A.And | A.Or -> raise (Failure "internal error: semant should have rejected and/or on float")
         | _         -> to_imp "Binop not yet implemented"
         ) e1' e2' "tmp" builder
-        else if t = A.Set(A.PrimTyp(A.Int)) then match op with
+        else if t2 = A.Set(A.PrimTyp(A.Int)) then match op with
             A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder
           | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
+          | A.Member  -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
+            let _ = L.build_store e1' val_addr builder in
+            let bitcast = L.build_bitcast val_addr str_t "bitcast" builder in  
+            L.build_call has_key_func [| e2' ; bitcast ; int_str |] "has_key" builder
         else (match op with
         | A.Add     -> L.build_add
         | A.Sub     -> L.build_sub

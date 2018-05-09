@@ -598,3 +598,11 @@ void *get_val(struct hset_head *curr) {
 	return curr->val_p;
 }
 
+int has_key(struct hset_head *hash_set, void *val_p, char *typ) {
+	char *val_ts = string_of(val_p, typ);
+	struct hset_head *temp;
+	HASH_FIND(hh, hash_set, val_ts, strlen(val_ts), temp);
+
+	free(val_ts);
+	return (temp != NULL);
+}
