@@ -49,6 +49,15 @@ let translate (stmt_list) =
     | A.Map(_)          -> ptr_t
     | A.Tuple(typs)     -> 
       L.struct_type context (Array.of_list (List.map ltype_of_typ typs))
+    | A.Func(it, ot)    ->
+      (* Split tuple types *)
+      let split_tup tup_t =
+        match tup_t with
+        | A.Tuple(tl) -> Array.of_list (List.map ltype_of_typ tl)
+        | t -> [| ltype_of_typ t |]
+      in
+      let ltyp = L.function_type (ltype_of_typ ot) (split_tup it) in
+      L.dump_type ltyp ; ltyp
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
   in
 
@@ -56,7 +65,7 @@ let translate (stmt_list) =
   let printf_t : L.lltype = 
       L.var_arg_function_type i32_t [| str_t |] in
   let printf_func : L.llvalue = 
-     L.declare_function "printf" printf_t the_module in 
+      L.declare_function "printf" printf_t the_module in 
 
   (* str_t represents any pointer as char, void, hset_head pointers 
      are all i8 pointers to LLVM *)
@@ -441,7 +450,8 @@ let translate (stmt_list) =
                   L.build_store p (StringMap.find n var_map) builder
                 ) args (Array.to_list (L.params this_function)) in
                 let rev_stmts = List.rev stmts in
-                let (builder, _) = List.fold_left stmt_builder (builder, var_map) (List.rev (List.tl rev_stmts)) in
+                (* Exclude last expression which is added as ret *)
+                let (builder, var_map) = List.fold_left stmt_builder (builder, var_map) (List.rev (List.tl rev_stmts)) in
 
                 (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
                 let rec return_expr revd_stmts = match revd_stmts with
