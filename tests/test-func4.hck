@@ -1,0 +1,3 @@
+let foo: (string * int * real) -> int;
+foo(a, b, c) = b + 12 end
+print("\(foo("baz", 10, 2.0))");

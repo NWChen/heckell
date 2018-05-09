@@ -178,7 +178,7 @@ let translate (stmt_list) =
       L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
   in
   let lookup n map = try StringMap.find n map
-                     with Not_found -> raise (Failure ("ERROR: asn " ^ n ^ " not found."))
+                     with Not_found -> raise (Failure ("ERROR: variable " ^ n ^ " not found."))
   in
 
   let get_int_or_float e = match e with
@@ -195,14 +195,14 @@ let translate (stmt_list) =
       if x >= (get_int_or_float e) then let x' = (t, (SLit (x + inc))) in s::(build_list x' inc e) else []
   in
 
-  let build_statements (builder, var_map) stmt = 
+  let build_statements (builder, var_map, len_map) stmt = 
     let rec expr builder var_map (typ, e) = match e with
         SLit i -> L.const_int i32_t i
       | SCharLit c -> L.const_int i8_t (Char.code c)
       | SBoolLit b -> L.const_int i8_t (if b then 1 else 0)
       | SRealLit r -> L.const_float f32_t r
       | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
-          in add_list_vals sl (fst (List.hd sl)) hset_ptr
+          in add_list_vals sl (fst (List.hd sl)) hset_ptr  
       | SMapLit ml -> 
         let expr_to_addrs (typ, se) =
           let llval = expr builder var_map (typ, se) in
@@ -218,7 +218,8 @@ let translate (stmt_list) =
         L.build_call hset_from_list_func params "hset_from_list" builder 
       | SId s -> (
         match typ with
-        | Func(_, _) -> lookup s var_map
+        | A.Func(_, _) -> lookup s var_map
+        | A.Array(_) -> lookup s var_map
         | _ -> L.build_load (lookup s var_map) s builder
       )
       | SStringLit s -> L.build_global_stringptr s ".str" builder
@@ -286,8 +287,8 @@ let translate (stmt_list) =
         | _         -> to_imp "Binop not yet implemented"
         ) e1' e2' "tmp" builder
         else if t = A.Set(A.PrimTyp(A.Int)) then match op with
-          A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder 
-        | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
+            A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder
+          | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
         else (match op with
         | A.Add     -> L.build_add
         | A.Sub     -> L.build_sub
@@ -405,8 +406,8 @@ let translate (stmt_list) =
       | None -> ignore (f builder) in
 
     (* match stmt with *)
-    let rec stmt_builder (builder, var_map) = function 
-        | SExpr e -> let _ = expr builder var_map e in (builder, var_map)
+    let rec stmt_builder (builder, var_map, len_map) = function 
+        | SExpr e -> let _ = expr builder var_map e in (builder, var_map, len_map)
         (* Handle a declaration *)
         | SDecl (n, t) ->
             let allocate n' t' b = L.build_alloca (ltype_of_typ t') n' b in (* t' != t passed to SDecl; `b` is a builder *)
@@ -436,9 +437,9 @@ let translate (stmt_list) =
                 in StringMap.add n func_def var_map
               | _ -> let addr = L.build_alloca (ltype_of_typ t) n builder in
                 StringMap.add n addr var_map
-            ) in (builder, var_map)
+            ) in (builder, var_map, len_map)
 
-        | SAsn (n, sexpr) -> let var_map = (match sexpr with
+        | SAsn (n, sexpr) -> let var_map, len_map = (match sexpr with
             | (A.Func(_), SId(_)) | (A.Func(_), SFuncCall(_, _)) ->
                 let f_del = StringMap.find n var_map in
                 let _ = L.delete_function f_del in
@@ -447,7 +448,8 @@ let translate (stmt_list) =
                 let lf_addr = L.build_alloca (ltype_of_typ t) n builder in
                 let var_map = StringMap.add n lf_addr var_map in
                 let llval = expr builder var_map sexpr in
-                let _ = L.build_store llval lf_addr builder in var_map
+                let _ = L.build_store llval lf_addr builder in 
+                (var_map, len_map)
             (* Function definition *)
             | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
 
@@ -471,8 +473,9 @@ let translate (stmt_list) =
                 ) args (Array.to_list (L.params this_function)) in
                 let rev_stmts = List.rev stmts in
                 (* Exclude last expression which is added as ret *)
-                let (builder, var_map) = List.fold_left stmt_builder (builder, var_map) (List.rev (List.tl rev_stmts)) in
-
+                let (builder, var_map, len_map) = 
+                  List.fold_left stmt_builder (builder, var_map, len_map) (List.rev (List.tl rev_stmts)) 
+                in
                 (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
                 let rec return_expr revd_stmts = match revd_stmts with
                   | [] -> (A.PrimTyp(A.Int), SLit(0)) (* `heckell` returns `0` when no expression inside a function can be evaluated (nothing to return). *)
@@ -482,17 +485,22 @@ let translate (stmt_list) =
                 let e' = expr builder var_map (return_expr rev_stmts) in
                 let return_instr = L.build_ret e' in
                 let _ = add_terminal builder return_instr in
-                  var_map
+                (var_map, len_map)
 
             | _ -> let (_, e) = sexpr in
                 let addr = lookup n var_map in
                 let e' = expr builder var_map sexpr in
                 match e with
-                  | SArrayLit (x) -> StringMap.add n e' var_map
-                  | SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
-                  | _ -> let _ = L.build_store e' addr builder in var_map
-            ) in (builder, var_map)
-
+                  SArrayRange(e1, i, e2) -> 
+                    let x = (match i with
+                        Some x -> (get_int_or_float x)
+                      | None -> 1) in
+                    let len = List.length (build_list e1 (x - (get_int_or_float e1)) e2) in
+                    (StringMap.add n e' var_map, StringMap.add n len len_map)
+                | SArrayLit(x) -> (StringMap.add n e' var_map, StringMap.add n (List.length x) len_map)
+                | SSetLit(x) -> ignore(L.build_store e' addr builder); (var_map, StringMap.add n (List.length x) len_map)
+                | _ -> let _ = L.build_store e' addr builder in (var_map, len_map)
+              ) in (builder, var_map, len_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             (* cast to bool from i32 *)
@@ -502,23 +510,23 @@ let translate (stmt_list) =
 
             (* then basic block *)
             let then_bb = L.append_block context "then" the_function in
-            let then_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context then_bb, var_map) then_stmt in
+            let then_builder, var_map, len_map = List.fold_left stmt_builder (L.builder_at_end context then_bb, var_map, len_map) then_stmt in
             let () = add_terminal then_builder branch_instr in
 
             (* else basic block *)
             let else_bb = L.append_block context "else" the_function in
-            let else_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context else_bb, var_map) else_stmt in
+            let else_builder, var_map, len_map = List.fold_left stmt_builder (L.builder_at_end context else_bb, var_map, len_map) else_stmt in
             let () = add_terminal else_builder branch_instr in
 
             let _ = L.build_cond_br bool_val then_bb else_bb builder in
             (* Move to the merge block for further instruction building *)
-            (L.builder_at_end context merge_bb, var_map)
+            (L.builder_at_end context merge_bb, var_map, len_map)
         | SWhile (predicate, body) ->
             let pred_bb = L.append_block context "while" the_function in
             let _ = L.build_br pred_bb builder in
 
             let body_bb = L.append_block context "while_body" the_function in
-            let while_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map) body in
+            let while_builder, var_map, len_map = List.fold_left stmt_builder (L.builder_at_end context body_bb, var_map, len_map) body in
             let () = add_terminal while_builder (L.build_br pred_bb) in
 
             let pred_builder = L.builder_at_end context pred_bb in
@@ -527,22 +535,22 @@ let translate (stmt_list) =
 
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
-            (L.builder_at_end context merge_bb, var_map)
+            (L.builder_at_end context merge_bb, var_map, len_map)
         | SFor (n, a, body) -> 
             let base_addr = expr builder var_map a in
             let len = match (snd a) with
-                SArrayLit(x) -> List.length x
+                SArrayLit(x) | SSetLit(x) -> List.length x
               | SArrayRange(e1, i, e2) ->
                 (match i with
                     Some x -> List.length (build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2)
                   | None -> List.length (build_list e1 1 e2))
-              | SSetLit(x) -> List.length x
+              | SId(x) -> lookup x len_map
               | _ -> raise (Failure "incorrect type")
-            in
+            in            
             let var = L.build_alloca i32_t n builder in (* hardcoded type *)
 
-            match (snd a) with
-              | SArrayLit(_) | SArrayRange(_) -> 
+            (match (fst a) with
+              | A.Array(_) -> 
                   let rec for_body_arr i len = 
                     if i < len then
                       let offset = L.const_int i32_t i in
@@ -552,13 +560,13 @@ let translate (stmt_list) =
                       let _ = L.build_store arr_val var builder in
 
                       let new_var_map = StringMap.add n var var_map in
-                      List.fold_left stmt_builder (builder, new_var_map) body;
+                      List.fold_left stmt_builder (builder, new_var_map, len_map) body;
                       for_body_arr (i + 1) len
                     else
-                      (builder, var_map)
+                      (builder, var_map, len_map)
                   in
                   for_body_arr 0 len
-              | SSetLit(_) -> 
+              | A.Set(_) ->
                   let rec for_body_sets i len curr =
                     if i < len then
                       let set_val_ptr = L.build_call get_val_func [| curr |] "get_val" builder in
@@ -568,19 +576,18 @@ let translate (stmt_list) =
                       let _ = L.build_store set_val var builder in
 
                       let new_var_map = StringMap.add n var var_map in
-                      List.fold_left stmt_builder (builder, new_var_map) body;
+                      List.fold_left stmt_builder (builder, new_var_map, len_map) body;
 
                       let next = L.build_call get_next_func [| curr |] "get_next" builder in
                       for_body_sets (i + 1) len next
-
                     else
-                      (builder, var_map)
+                      (builder, var_map, len_map)
                   in
-                  for_body_sets 0 len base_addr
+                  for_body_sets 0 len base_addr)
         | _ -> to_imp "Statement not yet handled"
 
-    in stmt_builder (builder, var_map) stmt
+    in stmt_builder (builder, var_map, len_map) stmt
 
-  in let builder = fst (List.fold_left build_statements (builder, StringMap.empty) stmt_list) in
+  in let (builder, _, _) = List.fold_left build_statements (builder, StringMap.empty, StringMap.empty) stmt_list in
   ignore(L.build_ret (L.const_int i32_t 0) builder);
   the_module
