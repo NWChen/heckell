@@ -1,0 +1,2 @@
+let t = (3, "hello", 'x');
+print("t = \(t)");
