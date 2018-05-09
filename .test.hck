@@ -1,8 +1,0 @@
-let f : (int * int) -> int;
-f(x,y) = x end
-//let t = (2,3);
-//f(t);
-//f(4,5);
-//f(x,y) = y end
-//f(t);
-//f(4,5);

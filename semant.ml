@@ -17,7 +17,7 @@ type scope = {symb: Ast.typ StringMap.t; parent: scope option}
 
 (* stmts: stmt list *)
 let check stmts = 
-  let rec type_of_identifier var scope =
+  let rec type_of_identifier var scope = 
     try StringMap.find var scope.symb
     with Not_found -> 
     match scope.parent with

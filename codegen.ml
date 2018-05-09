@@ -169,7 +169,7 @@ let translate (stmt_list) =
       L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
   in
   let lookup n map = try StringMap.find n map
-                     with Not_found -> raise (Failure "ERROR: asn not found.")
+                     with Not_found -> raise (Failure ("ERROR: asn " ^ n ^ " not found."))
   in
 
   let get_int_or_float e = match e with
@@ -209,6 +209,13 @@ let translate (stmt_list) =
         L.build_call hset_from_list_func params "hset_from_list" builder 
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
+      | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
+      | SFuncCall (s, e) ->
+        let result = s ^ "_result" and f = StringMap.find s var_map in (* f: llvalue representing function <s> *)
+        L.build_call f (match e with
+          | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el)  (* TODO revise el evaluation *)
+          | x -> [| expr builder var_map x |]
+        ) result builder
       | SInterStringLit(sl, el) -> 
         let frmt = String.concat "%s" sl in
         let llfrmt = L.build_global_stringptr frmt ".str" builder in
@@ -224,7 +231,6 @@ let translate (stmt_list) =
         let params = Array.of_list (llfrmt::str_num::str_addrs) in
         let fcall = L.build_call string_interpolation_func params "temp" builder in
         L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
-      | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
       | SMapCall(m, se) -> 
         let typ' = fst se in
         let llval_key = expr builder var_map se in
@@ -380,24 +386,83 @@ let translate (stmt_list) =
 
     (* match stmt with *)
     let rec stmt_builder (builder, var_map) = function 
-          SExpr e -> ignore(expr builder var_map e); (builder, var_map)
+        | SExpr e -> let _ = expr builder var_map e in (builder, var_map)
         (* Handle a declaration *)
         | SDecl (n, t) ->
-          let addr = match t with
-             (* A bit of a hack here. We initialize the array to have size 1 when declared and adjust the size later when the array is assigned. *)
-            | A.Array(t) -> L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 1) n builder
-            | _ -> L.build_alloca (ltype_of_typ t) n builder
-          in (builder, StringMap.add n addr var_map)
-        | SAsn (n, sexpr) ->
-            let (_, e) = sexpr in
-            let addr = lookup n var_map in
-            let e' = expr builder var_map sexpr in
-            let var_map = (match e with
-                SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
-              | SArrayLit(x) -> StringMap.add n e' var_map
-              | _ -> ignore(L.build_store e' addr builder); var_map
-            ) in
-            (builder, var_map)
+            let allocate n' t' b = L.build_alloca (ltype_of_typ t') n' b in (* t' != t passed to SDecl; `b` is a builder *)
+            let var_map = (match t with
+              (* primitive type declaration *)
+              | A.PrimTyp(_) -> 
+                  StringMap.add n (allocate n t builder) var_map (* L.build_alloca (ltype_of_typ t) n builder in*)
+              | A.Array(t) -> (* A bit of a hack here. We initialize the array to have size 1 when declared and adjust the size later when the array is assigned. *)
+                let addr = L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 1) n builder in
+                StringMap.add n addr var_map
+              | A.Func(in_t, out_t) -> (* Function declaration. *)
+                let name_formals formals = List.mapi (fun i _ -> n ^ (string_of_int i)) formals in (* we only know their type so far - thus formals are temporarily named n0, n1, ... where n = function name *) (* TODO check these temp names in Sasn. *)
+                let formal_typs = match in_t with
+                  | A.PrimTyp(_) -> [in_t]
+                  | A.Tuple(l) -> l
+                in
+                let formal_typs = Array.of_list (List.map (fun t -> ltype_of_typ t) formal_typs) in
+                let func_typ = L.function_type (ltype_of_typ out_t) formal_typs in
+                let func_def = L.define_function n func_typ the_module in
+                let this_function = L.builder_at_end context (L.entry_block func_def) in
+                let var_map = (match in_t with
+                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
+                    StringMap.add formal (allocate formal in_t this_function) var_map
+                  | A.Tuple(l) -> let formals = name_formals l in
+                    List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l) in
+                StringMap.add n func_def var_map
+              | _ -> let addr = L.build_alloca (ltype_of_typ t) n builder in
+                StringMap.add n addr var_map
+            ) in (builder, var_map)
+
+        | SAsn (n, sexpr) -> let var_map = (match sexpr with
+
+            (* Function definition *)
+            | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
+
+                (* Build formals, declaration, etc. *)
+                let formals = List.mapi (fun i _ -> n ^ (string_of_int i)) args in
+                let formals' = List.map (fun arg -> match arg with (* Formals, now attached to names, specified in function assignment(definition). *)
+                  | SDecl (n, _) -> n
+                  | _ -> raise (Failure ("Improperly specified argument (expected declaration)."))
+                ) args in
+                let formal_instrs = List.map (fun f -> StringMap.find f var_map) formals in
+                let var_map = List.fold_left2 (fun m f f' -> (* Replace temporary formal name bindings in `var_map` with new names. *)
+                  let instr = StringMap.find f m in
+                  (StringMap.add f' instr (StringMap.remove f m))
+                ) var_map formals formals' in
+                let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in
+                let _ = List.iter2 (fun f f' -> L.replace_all_uses_with f f') formal_instrs formal_instrs' in (* Replace temporary (<n>0, <n>1, ...) formal names in LLVM with new (user-specified) names. *)
+                (* Generate LLVM in the basic block entered by function <n> *)
+                let this_function = StringMap.find n var_map in
+                let builder = L.builder_at_end context (L.entry_block this_function) in
+                let _ = List.map2 (fun (SDecl (n, t)) p ->
+                  L.build_store p (StringMap.find n var_map) builder
+                ) args (Array.to_list (L.params this_function)) in
+                let (builder, _) = List.fold_left stmt_builder (builder, var_map) stmts in
+
+                (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
+                let rec return_expr revd_stmts = match revd_stmts with
+                  | [] -> (A.PrimTyp(A.Int), SLit(0)) (* `heckell` returns `0` when no expression inside a function can be evaluated (nothing to return). *)
+                  | SExpr(e') :: _ -> e'
+                  | _ :: tl -> return_expr tl
+                in  
+                let e' = expr builder var_map (return_expr (List.rev stmts)) in
+                let return_instr = L.build_ret e' in
+                let _ = add_terminal builder return_instr in
+                  var_map
+
+            | _ -> let (_, e) = sexpr in
+                let addr = lookup n var_map in
+                let e' = expr builder var_map sexpr in
+                match e with
+                  | SArrayLit (x) -> StringMap.add n e' var_map
+                  | SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
+                  | _ -> let _ = L.build_store e' addr builder in var_map
+            ) in (builder, var_map)
+
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             (* cast to bool from i32 *)
