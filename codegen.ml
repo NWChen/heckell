@@ -134,35 +134,37 @@ let translate (stmt_list) =
         (* Handle a declaration *)
 
         | SDecl (n, t) -> 
-            let allocate n' t' = L.build_alloca (ltype_of_typ t') n' builder in (* t' != t passed to SDecl *)
+            let allocate n' t' b = L.build_alloca (ltype_of_typ t') n' b in (* t' != t passed to SDecl; `b` is a builder *)
             let var_map = (match t with
               (* primitive type declaration *)
               | A.PrimTyp(_) -> 
-                  StringMap.add n (allocate n t) var_map (* L.build_alloca (ltype_of_typ t) n builder in*)
+                  StringMap.add n (allocate n t builder) var_map (* L.build_alloca (ltype_of_typ t) n builder in*)
 
               (* function declartion *)
               | A.Func(in_t, out_t) ->
                 let name_formals formals = List.mapi (fun i _ -> n ^ (string_of_int i)) formals in (* we only know their type so far - thus formals are temporarily named n0, n1, ... where n = function name *) (* TODO check these temp names in Sasn. *)
-                let (formals, var_map) = (match in_t with (* n = name of function, t = (in_typ, out_typ) *)
-                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
-                      ([in_t], StringMap.add formal (allocate formal in_t) var_map) (* note that `n` is the name of the function, not the formal (arg). *)
-                  | A.Tuple(l) -> let formals = name_formals l in
-                      (l, List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t') m) var_map formals l)
-                  | _ -> raise (Failure ("Unsupported function input type."))
-                ) in
-                let formals_arr = Array.of_list (List.map (fun t -> ltype_of_typ t) formals) in
-                let func_typ = L.function_type (ltype_of_typ out_t) formals_arr in
+                let formal_typs = match in_t with
+                  | A.PrimTyp(_) -> [in_t]
+                  | A.Tuple(l) -> l
+                in
+                let formal_typs = Array.of_list (List.map (fun t -> ltype_of_typ t) formal_typs) in
+                let func_typ = L.function_type (ltype_of_typ out_t) formal_typs in
                 let func_def = L.define_function n func_typ the_module in
+                let this_function = L.builder_at_end context (L.entry_block func_def) in
+                let var_map = (match in_t with
+                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
+                    StringMap.add formal (allocate formal in_t this_function) var_map
+                  | A.Tuple(l) -> let formals = name_formals l in
+                    List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l) in
                 StringMap.add n func_def var_map
             ) in (builder, var_map)
 
         | SAsn (n, sexpr) -> let _ = (match sexpr with
 
-            (* function definition *)
+            (* Function definition *)
             | (A.Func(in_t, out_t), SFuncDef (args, stmts)) ->
 
                 (* Build formals, declaration, etc. *)
-                (* TODO more intelligent to just alias new formals to old formals? *)
                 let formals = List.mapi (fun i _ -> n ^ (string_of_int i)) args in
                 let formals' = List.map (fun arg -> match arg with (* Formals, now attached to names, specified in function assignment(definition). *)
                   | SDecl (n, _) -> n
@@ -175,11 +177,12 @@ let translate (stmt_list) =
                 ) var_map formals formals' in
                 let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in
                 let _ = List.iter2 (fun f f' -> L.replace_all_uses_with f f') formal_instrs formal_instrs' in (* Replace temporary (<n>0, <n>1, ...) formal names in LLVM with new (user-specified) names. *)
-
-                (* Build function body *)
-                let func_builder, var_map = List.fold_left stmt_builder (L.builder_at_end context (L.entry_block the_function), var_map) stmts in (* the module ? *)
+                (* Generate LLVM in the basic block entered by function <n> *)
+                let this_function = StringMap.find n var_map in
+                let builder = L.builder_at_end context (L.entry_block this_function) in
+                let (builder, _) = List.fold_left stmt_builder (builder, var_map) stmts in
                 let return_instr = L.build_ret (L.const_int (ltype_of_typ out_t) 0) in
-                add_terminal func_builder return_instr
+                add_terminal builder return_instr (* TODO fix returns *)
             | _ -> let addr = lookup n var_map in
                 let e' = expr builder var_map sexpr in
                 let _ = L.build_store e' addr builder in ()
