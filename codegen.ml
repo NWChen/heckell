@@ -72,10 +72,10 @@ let translate (stmt_list) =
   let hset_from_list_func : L.llvalue =
       L.declare_function "hset_from_list" hset_from_list_t the_module in
   
-  let get_val_t : L.lltype =
+  let find_val_t : L.lltype =
       L.function_type ptr_t [| ptr_t; ptr_t; str_t |] in
-  let get_val_func : L.llvalue =
-      L.declare_function "get_val" get_val_t the_module in
+  let find_val_func : L.llvalue =
+      L.declare_function "find_val" find_val_t the_module in
 
   (* add_val returns new hset_head pointer and
      takes string of value, void pointer to value,
@@ -123,6 +123,21 @@ let translate (stmt_list) =
   let free_args_func : L.llvalue =
       L.declare_function "free_args" free_args_t the_module in
 
+  let hset_len_t : L.lltype =
+      L.var_arg_function_type i32_t [| str_t |] in
+  let hset_len_func : L.llvalue =
+      L.declare_function "hset_len" hset_len_t the_module in
+
+  let get_next_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t |] in
+  let get_next_func : L.llvalue =
+      L.declare_function "get_next" get_next_t the_module in
+
+  let get_val_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t |] in
+  let get_val_func : L.llvalue =
+      L.declare_function "get_val" get_val_t the_module in
+
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Make the LLVM module "aware" of the main function *)
@@ -155,6 +170,20 @@ let translate (stmt_list) =
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
+  in
+
+  let get_int_or_float e = match e with
+      (_, SLit i) -> i
+    | _ -> raise (Failure "internal error: semant should have rejected, only int or real allowed")
+  in
+
+  let rec build_list s inc e = 
+    let (t, _) = s in
+    let x = (get_int_or_float s) in
+    if inc > 0 then
+      if x <= (get_int_or_float e) then let x' = (t, (SLit (x + inc))) in s::(build_list x' inc e) else []
+    else
+      if x >= (get_int_or_float e) then let x' = (t, (SLit (x + inc))) in s::(build_list x' inc e) else []
   in
 
   let build_statements (builder, var_map) stmt = 
@@ -208,7 +237,7 @@ let translate (stmt_list) =
         let llval_map = lookup m var_map in
         let map_ptr = L.build_load llval_map m builder in
         let str_typ = strtype_of_typ typ' in
-        let res = L.build_call get_val_func [| map_ptr; bc_key; str_typ |] "get_val" builder in
+        let res = L.build_call find_val_func [| map_ptr; bc_key; str_typ |] "find_val" builder in
         let bc_res = L.build_bitcast res (L.pointer_type lltyp_tup) "bitcast" builder in
         let gep_ptr = L.build_struct_gep bc_res 1 "" builder in
         L.build_load gep_ptr m builder
@@ -272,9 +301,51 @@ let translate (stmt_list) =
             L.build_load gep_ptr "" builder
           | _ -> raise(Failure "semant shouldn't have allowed non-literal int index for tuple") 
           )
-        | A.Array(_) -> to_imp "Array indexing"
+        | A.Array(_) -> 
+          let idx = expr builder var_map e2 in
+          let pointer = L.build_gep llptr [|idx|] "tmp" builder in
+          L.build_load pointer "tmp" builder
         )
-      | _ as e -> to_imp (string_of_sexpr (typ, e)) (* TODO: implemnet variable reference *)
+      | SArrayLit(x) -> 
+        let (arr_t, _) = List.hd x in
+        let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length x)) "tmp" builder in
+        let _ = initialize_arr addr x var_map in
+        addr
+      | SArrayGet(l, i) ->
+        let addr = lookup l var_map in
+        let idx = expr builder var_map i in
+        let pointer = L.build_gep addr [|idx|] "tmp" builder in
+        L.build_load pointer "tmp" builder
+      | SArrayAt(l, i, e) -> 
+        let e' = expr builder var_map e in
+        let idx = expr builder var_map i in
+        let addr = lookup l var_map in
+        let pointer = L.build_gep addr [|idx|] "tmp" builder in
+        L.build_store e' pointer builder
+      | SArrayRange(e1, i, e2) ->
+        let (arr_t, _) = e1 in
+        let lis = match i with
+          | Some x ->
+              if (get_int_or_float x) == (get_int_or_float e1) then
+                raise (Failure "Second argument of array range must not be the same as the first value")
+              else 
+                build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2
+          | None -> build_list e1 1 e2
+        in
+        let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length lis)) "tmp" builder in
+        let _ = initialize_arr addr lis var_map in
+        addr
+      | _ as e -> to_imp (string_of_sexpr (typ, e))
+    
+    and map_build x o addr =
+      let x' = expr builder var_map x in
+      let arr_ptr = L.build_gep addr [| L.const_int i32_t o |]
+          "tmp" builder in
+      let _ = L.build_store x' arr_ptr builder
+      in o + 1
+    
+    and initialize_arr addr el var_map = List.fold_left (fun o e -> map_build e o addr) 0 el
+      
     and add_list_vals (slist: sexpr list) t hset_ptr = match slist with
       | [] -> raise (Failure "empty list added to set") 
       | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in
@@ -311,13 +382,22 @@ let translate (stmt_list) =
     let rec stmt_builder (builder, var_map) = function 
           SExpr e -> ignore(expr builder var_map e); (builder, var_map)
         (* Handle a declaration *)
-        | SDecl (n, t) -> let addr = L.build_alloca (ltype_of_typ t) n builder
-            in (builder, StringMap.add n addr var_map) (* TODO DONT IGNORE THIS *)
-
-        | SAsn (n, sexpr) -> let addr = lookup n var_map
-            in let e' = expr builder var_map sexpr
-            in let _ = L.build_store e' addr builder 
-            in (builder, var_map) (* TODO: should this really be ignored? *)
+        | SDecl (n, t) ->
+          let addr = match t with
+             (* A bit of a hack here. We initialize the array to have size 1 when declared and adjust the size later when the array is assigned. *)
+            | A.Array(t) -> L.build_array_alloca (ltype_of_typ t) (L.const_int i32_t 1) n builder
+            | _ -> L.build_alloca (ltype_of_typ t) n builder
+          in (builder, StringMap.add n addr var_map)
+        | SAsn (n, sexpr) ->
+            let (_, e) = sexpr in
+            let addr = lookup n var_map in
+            let e' = expr builder var_map sexpr in
+            let var_map = (match e with
+                SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
+              | SArrayLit(x) -> StringMap.add n e' var_map
+              | _ -> ignore(L.build_store e' addr builder); var_map
+            ) in
+            (builder, var_map)
         | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder var_map predicate in
             let merge_bb = L.append_block context "merge" the_function in
@@ -350,6 +430,55 @@ let translate (stmt_list) =
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
             (L.builder_at_end context merge_bb, var_map)
+        | SFor (n, a, body) -> 
+            let base_addr = expr builder var_map a in
+            let len = match (snd a) with
+                SArrayLit(x) -> List.length x
+              | SArrayRange(e1, i, e2) ->
+                (match i with
+                    Some x -> List.length (build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2)
+                  | None -> List.length (build_list e1 1 e2))
+              | SSetLit(x) -> List.length x
+              | _ -> raise (Failure "incorrect type")
+            in
+            let var = L.build_alloca i32_t n builder in (* hardcoded type *)
+
+            match (snd a) with
+              | SArrayLit(_) | SArrayRange(_) -> 
+                  let rec for_body_arr i len = 
+                    if i < len then
+                      let offset = L.const_int i32_t i in
+                      let arr_ptr = L.build_gep base_addr [| offset |] "val_ptr" builder in
+                      let arr_val = L.build_load arr_ptr "new_val" builder in
+
+                      let _ = L.build_store arr_val var builder in
+
+                      let new_var_map = StringMap.add n var var_map in
+                      List.fold_left stmt_builder (builder, new_var_map) body;
+                      for_body_arr (i + 1) len
+                    else
+                      (builder, var_map)
+                  in
+                  for_body_arr 0 len
+              | SSetLit(_) -> 
+                  let rec for_body_sets i len curr =
+                    if i < len then
+                      let set_val_ptr = L.build_call get_val_func [| curr |] "get_val" builder in
+                      let bitcast = L.build_bitcast set_val_ptr intp_t "bitcast" builder in
+                      let set_val = L.build_load bitcast "new_val" builder in
+
+                      let _ = L.build_store set_val var builder in
+
+                      let new_var_map = StringMap.add n var var_map in
+                      List.fold_left stmt_builder (builder, new_var_map) body;
+
+                      let next = L.build_call get_next_func [| curr |] "get_next" builder in
+                      for_body_sets (i + 1) len next
+
+                    else
+                      (builder, var_map)
+                  in
+                  for_body_sets 0 len base_addr
         | _ -> to_imp "Statement not yet handled"
 
     in stmt_builder (builder, var_map) stmt

@@ -61,7 +61,7 @@ let rec string_of_expr = function
     | x -> s ^ " (" ^ string_of_expr x ^ ")" )
   | SetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_expr el)) ^ "}"
   | ArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_expr el)) ^ "]"
-  | ArrayRange(e1, e2, e3) -> 
+  | ArrayRange(e1, e2, e3) ->
     (match e2 with 
       | None -> "[" ^ string_of_expr e1 ^ " ... " ^ string_of_expr e3 ^ "]"
       | Some x -> "[" ^ string_of_expr e1 
@@ -80,6 +80,7 @@ let rec string_of_expr = function
   | FuncDefNamed(_, formals, stmts) ->
       "(" ^ (String.concat "," formals) ^ ") ->\n  (\n    "
       ^ (String.concat ";\n    " (List.map string_of_stmt stmts)) ^ "\n  )"
+  | _ -> "_"
 
 and string_of_stmt = function
     Asn(sl, e) -> (String.concat "," sl) ^ " = " ^ string_of_expr e
@@ -88,6 +89,7 @@ and string_of_stmt = function
   | Expr(e) -> string_of_expr e
   | Iter(sl, e) -> (String.concat "," sl) ^ " in " ^ string_of_expr e
   | If(e, stmts, stmts2) -> "if " ^ (string_of_expr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts))) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts2)))
+  | For(n, it, stmts) -> "for " ^ n ^ " in " ^ (string_of_expr it) ^ " then \n" ^ (String.concat ";\n " (List.map string_of_stmt (List.rev stmts)))
 
 let string_of_program stmts =
   (* let pretty_print_stmt = *)
@@ -151,6 +153,7 @@ and string_of_sstmt = function
     in let str_sdecl = List.map helper sl
     in "(" ^ (String.concat ", " str_sdecl) ^ ") in " ^ string_of_sexpr e
   | SIf(e, stmts, stmts2) -> "if " ^ (string_of_sexpr e) ^ " then\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts)) ^ "\n else\n " ^ (String.concat ";\n " (List.map string_of_sstmt stmts2))
+  | _ -> "_"
 
 let string_of_sprogram sstmts = 
   String.concat "\n" (List.map string_of_sstmt sstmts) ^ "\n"

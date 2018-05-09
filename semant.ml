@@ -46,6 +46,10 @@ let check stmts =
       | _ ->
         if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
+  let array_element_type arr_t = match arr_t with
+    Array(x) -> x
+    | _ -> raise (Failure "Not an array type")
+  in
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
   let rec expr e scope = match e with
@@ -132,6 +136,37 @@ let check stmts =
       )
       | _ -> raise(Failure("need int to index collection"))
     )
+    | ArrayGet(l, i) ->
+      let idx = expr i scope in
+      let _ = match fst idx with
+        | PrimTyp(Int) -> PrimTyp(Int)
+        | _ -> raise (Failure ("index of array must be an integer"))
+      in
+      let arr_t = type_of_identifier l scope in
+      (array_element_type arr_t, SArrayGet(l, idx))
+    | ArrayAt(l, i, e) ->
+      let idx = expr i scope in
+      let _ = match fst idx with
+        | PrimTyp(Int) -> PrimTyp(Int)
+        | _ -> raise (Failure ("index of array must be an integer"))
+      in
+      let e' = expr e scope in
+      let (new_ty, _) = e' in
+      let arr_t = array_element_type (type_of_identifier l scope) in
+      let _ = check_asn arr_t new_ty "New element needs to have same type as existing array elements" in
+      (arr_t, SArrayAt(l, idx, e'))
+    | ArrayRange(e1, i, e2) -> 
+      let e1' = expr e1 scope in
+      let e2' = expr e2 scope in
+      let inc = match i with
+        | Some x -> Some (expr x scope)
+        | None -> None
+      in
+      let (e1_ty, _) = e1' in
+      let (e2_ty, _) = e2' in
+      let _ = check_asn e1_ty e2_ty "Array range elements must be the same type" in
+      let arr_t = fst e1' in
+      (Array(arr_t), SArrayRange(e1', inc, e2'))
     | FuncDefNamed(f, al, sl) -> ( (* f, al, sl = function name, expr list ne, statement list *)
       let func_t = type_of_identifier f scope in
       match func_t with
@@ -158,7 +193,7 @@ let check stmts =
       let typ = type_of_identifier var scope 
       and sexpr = expr e scope (* tuple *)
       in match typ with
-      | Func(in_typ, out_typ) as ex -> 
+      | Func(in_typ, out_typ) as ex ->
         let e_typ = fst sexpr in
         let err = "illegal assignment " ^ string_of_typ in_typ ^ " = " ^ 
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
@@ -215,6 +250,10 @@ let check stmts =
       (* TODO: need to create new scope for if and while *)
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
       | While(p, s) -> check_bool_expr p; check_stmt s symbols
+      | For(n, p, s) ->
+        let t = PrimTyp(Int) in
+        let map = add_to_scope n t symbols in
+        check_stmt s map(* TODO need to check type of p and that n is var *)
 
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
@@ -276,6 +315,9 @@ let check stmts =
       | While(p, s) -> 
         let (tp, se) = expr p symbols in
         SWhile((tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
+      | For(n, p, s) ->
+         let (tp, se) = expr p symbols in
+         SFor(n, (tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
     )
     | [] -> []
   in

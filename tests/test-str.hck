@@ -1,3 +1,0 @@
-let s: string;
-s = "hello";
-print_string(s);

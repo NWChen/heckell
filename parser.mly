@@ -5,15 +5,17 @@
 %token LBRACKET RBRACKET 
 %token LPAREN RPAREN
 %token LBRACE RBRACE
+%token DOT
 
 %token LET IN COLON COMMA SEMI DSEMI END ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR STRING
 %token SET MAP
 %token ARRAY
+%token GET AT
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
-%token IF THEN ELSE WHILE DO
+%token IF THEN ELSE WHILE FOR DO
 %token <int> LITERAL
 %token <float> REALLIT
 %token <char> CHARLIT
@@ -48,6 +50,7 @@
 %left TIMES DIVIDE
 %right NEG
 %left LPAREN LBRACKET
+%nonassoc DOT
 
 
 %start program
@@ -121,6 +124,7 @@ expr:
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
+| arr_op                { $1 }
 | LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
@@ -163,6 +167,10 @@ expr:
           | _ -> raise(Failure("iterator expected")) )
     }
   
+arr_op:
+| ID DOT GET LPAREN expr RPAREN              { ArrayGet($1, $5) }
+| ID DOT AT LPAREN expr COMMA expr RPAREN    { ArrayAt($1, $5, $7) }
+
 
 single_or_tuple:
 | LPAREN expr_list_ne RPAREN  { match $2 with 
@@ -206,6 +214,7 @@ stmt:
                             }
 | IF expr THEN stmt_list ELSE stmt_list END   { If($2, List.rev $4, List.rev $6) }
 | WHILE expr DO stmt_list END { While($2, List.rev $4) }
+| FOR ID IN expr DO stmt_list END { For($2, $4, List.rev $6) }
 
 stmt_list:
   /* nothing */  { [] }

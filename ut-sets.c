@@ -525,9 +525,10 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	return hset_new;
 }
 
+
 /* Get value from map hset using key of type typ
  */
-void *get_val(struct hset_head *hash_set, void *key_val, char *typ) {
+void *find_val(struct hset_head *hash_set, void *key_val, char *typ) {
 	char *key = string_of(key_val, typ);
 	struct hset_head *temp;
 	HASH_FIND(hh, hash_set, key, strlen(key), temp);
@@ -579,8 +580,21 @@ struct hset_head *hset_from_list(char *typ, int is_map, int n, ...) {
   }
   /* clean memory reserved for valist */
   va_end(args);
-
   free(og_ctyp);
 
 	return hash_set;
 }
+
+
+int hset_len(struct hset_head *hash_set) {
+	return HASH_COUNT(hash_set);
+}
+
+void *get_next(struct hset_head *curr) {	
+	return (curr != NULL) ? (void *) curr->hh.next : NULL;
+}
+
+void *get_val(struct hset_head *curr) {
+	return curr->val_p;
+}
+
