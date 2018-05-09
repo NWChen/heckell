@@ -321,8 +321,8 @@ let translate (stmt_list) =
                   | A.Tuple(l) -> let formals = name_formals l in
                     List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l) in
                 StringMap.add n func_def var_map
-              | _ -> let _ = L.build_alloca (ltype_of_typ t) n builder in
-                var_map
+              | _ -> let addr = L.build_alloca (ltype_of_typ t) n builder in
+                StringMap.add n addr var_map
             ) in (builder, var_map)
 
         | SAsn (n, sexpr) -> let var_map = (match sexpr with
