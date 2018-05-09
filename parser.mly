@@ -35,7 +35,7 @@
 %left COMMA
 %right EQUAL
 
-%left MAP
+%right MAP
 %left ARROW
 %left SET
 %left BEGINTERSTRING
@@ -74,10 +74,6 @@ simple_typ:
 | STRING              { String }
 | simple_typ SET      { Set($1) }
 | simple_typ ARRAY    { Array($1) }
-| simple_typ MAP      { match $1 with 
-                        | Func(t1, t2) -> Map(t1, t2)
-                        | _ -> raise(Failure "map qualifier can only be used on function type")
-                      }
 | LPAREN typ RPAREN   { $2 }
 
 
@@ -88,6 +84,10 @@ simple_typ_or_tuple:
 typ: 
 | simple_typ_or_tuple { $1 }
 | typ ARROW typ       { Func($1, $3) }
+| typ MAP             { match $1 with 
+                        | Func(t1, t2) -> Map(t1, t2)
+                        | _ -> raise(Failure "map qualifier can only be used on function type")
+                      }
 
 
 typ_list:

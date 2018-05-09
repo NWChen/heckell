@@ -29,6 +29,7 @@ let string_of_prim_typ = function
 
 let rec string_of_typ = function
     Set(t) -> "(" ^ string_of_typ t ^ " set)"
+  | Map(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ " map)"
   | Func(t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
   | Tuple(tl) -> "(" ^ (String.concat " * " (List.map string_of_typ tl)) ^ ")" 
   | Array(t) -> "(" ^ string_of_typ t ^ " array)"
@@ -115,11 +116,11 @@ let rec string_of_sexpr (t, e) =
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUniop(o, e) -> string_of_uop o ^ string_of_sexpr e
-  | SFuncCall(s, e) -> (
+  | SFuncCall(s, e) | SMapCall(s, e) -> (
     match e with
     | (_, STupleLit(_)) -> s ^ " " ^ string_of_sexpr e
     | x -> s ^ " (" ^ string_of_sexpr x ^ ")" )
-  | SSetLit(el) -> "{" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "}"
+  | SSetLit(el) | SMapLit(el) -> "{" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "}"
   | SArrayLit(el) -> "[" ^ (String.concat ", " (List.map string_of_sexpr el)) ^ "]"
   | SArrayRange(e1, e2, e3) -> 
     (match e2 with 

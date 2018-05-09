@@ -45,7 +45,8 @@ let translate (stmt_list) =
     | A.PrimTyp(A.Bool) -> i8_t  (* for compatability with c types, can't use i1 *)
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
-    | A.Set(_)          -> str_t
+    | A.Set(_)          -> ptr_t
+    | A.Map(_)          -> ptr_t
     | A.Tuple(typs)     -> 
       L.struct_type context (Array.of_list (List.map ltype_of_typ typs))
     | t -> raise (Failure ("Type " ^ string_of_typ t ^ " not implemented yet"))
@@ -61,10 +62,21 @@ let translate (stmt_list) =
      are all i8 pointers to LLVM *)
   (* init_hset returns hset_head pointer (NULL) *)
   let init_hset_t : L.lltype = 
-      L.function_type str_t [| (* void *) |] in
+      L.function_type ptr_t [| (* void *) |] in
   let init_hset_func : L.llvalue =
       L.declare_function "init_hset" init_hset_t the_module in
-   
+
+  (* Takes type as str, is_map bool, number of elems in list *)
+  let hset_from_list_t : L.lltype =
+      L.var_arg_function_type ptr_t [| str_t; i32_t; i32_t |] in
+  let hset_from_list_func : L.llvalue =
+      L.declare_function "hset_from_list" hset_from_list_t the_module in
+  
+  let get_val_t : L.lltype =
+      L.function_type ptr_t [| ptr_t; ptr_t; str_t |] in
+  let get_val_func : L.llvalue =
+      L.declare_function "get_val" get_val_t the_module in
+
   (* add_val returns new hset_head pointer and
      takes string of value, void pointer to value,
      type string, and original hset_head pointer*)
@@ -138,6 +150,8 @@ let translate (stmt_list) =
       L.build_global_stringptr (string_of_typ tup) "tup" builder
     | A.Set(_) as set   -> 
       L.build_global_stringptr (string_of_typ set) "set" builder
+    | A.Map(t1, t2)     ->
+      L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure "ERROR: asn not found.")
@@ -150,7 +164,20 @@ let translate (stmt_list) =
       | SBoolLit b -> L.const_int i8_t (if b then 1 else 0)
       | SRealLit r -> L.const_float f32_t r
       | SSetLit sl -> let hset_ptr = L.build_call init_hset_func [| |] "init_hset" builder 
-          in add_list_vals sl (fst (List.hd sl)) hset_ptr  
+          in add_list_vals sl (fst (List.hd sl)) hset_ptr
+      | SMapLit ml -> 
+        let expr_to_addrs (typ, se) =
+          let llval = expr builder var_map (typ, se) in
+          let val_addr = L.build_alloca (ltype_of_typ typ) "" builder in
+          let _ = L.build_store llval val_addr builder in
+          L.build_bitcast val_addr ptr_t "bitcast" builder 
+        in
+        let addrs = List.map expr_to_addrs ml in
+        let addr_n = L.const_int i32_t (List.length addrs) in
+        let is_map = L.const_int i32_t 1 in
+        let typ_str = strtype_of_typ (fst (List.hd ml)) in
+        let params = Array.of_list (typ_str::is_map::addr_n::addrs) in
+        L.build_call hset_from_list_func params "hset_from_list" builder 
       | SId s -> L.build_load (lookup s var_map) s builder
       | SStringLit s -> L.build_global_stringptr s ".str" builder
       | SInterStringLit(sl, el) -> 
@@ -169,6 +196,22 @@ let translate (stmt_list) =
         let fcall = L.build_call string_interpolation_func params "temp" builder in
         L.build_call free_args_func (Array.of_list (str_num::str_addrs)) "" builder ; fcall
       | SFuncCall ("print", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder 
+      | SMapCall(m, se) -> 
+        let typ' = fst se in
+        let llval_key = expr builder var_map se in
+        let lltype_typ1 = ltype_of_typ typ' in
+        let lltype_typ2 = ltype_of_typ typ in
+        let lltyp_tup = L.struct_type context [| lltype_typ1; lltype_typ2 |] in
+        let key_addr = L.build_alloca lltype_typ1 "" builder in
+        let _ = L.build_store llval_key key_addr builder in
+        let bc_key = L.build_bitcast key_addr ptr_t "bitcast" builder in
+        let llval_map = lookup m var_map in
+        let map_ptr = L.build_load llval_map m builder in
+        let str_typ = strtype_of_typ typ' in
+        let res = L.build_call get_val_func [| map_ptr; bc_key; str_typ |] "get_val" builder in
+        let bc_res = L.build_bitcast res (L.pointer_type lltyp_tup) "bitcast" builder in
+        let gep_ptr = L.build_struct_gep bc_res 1 "" builder in
+        L.build_load gep_ptr m builder
       | SBinop (e1, op, e2) -> 
         let (t, _) = e1
         and e1' = expr builder var_map e1
@@ -231,7 +274,7 @@ let translate (stmt_list) =
           )
         | A.Array(_) -> to_imp "Array indexing"
         )
-      | _ -> to_imp "expression builder" (* TODO: implemnet variable reference *)
+      | _ as e -> to_imp (string_of_sexpr (typ, e)) (* TODO: implemnet variable reference *)
     and add_list_vals (slist: sexpr list) t hset_ptr = match slist with
       | [] -> raise (Failure "empty list added to set") 
       | [ se ] -> let val_addr = L.build_alloca (ltype_of_typ t) "temp" builder in

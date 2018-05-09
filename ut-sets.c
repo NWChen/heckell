@@ -20,18 +20,18 @@
 
 enum types {
 	INT, REAL, CHAR, BOOL,
-	STRING, SET
+	STRING, SET, MAP
 };
 
 // max num of char in string of type
 // -1 means should not be used
 // includes 2 char padding
 int type_str_size[] = {
-	14, 100, 6, 8, -1, -1
+	14, 100, 6, 8, -1, -1, -1
 };
 
 char *types[] = {
-	"int", "real", "char", "bool", "string", "set"
+	"int", "real", "char", "bool", "string", "set", "map"
 };
 
 struct hset_head {
@@ -40,6 +40,13 @@ struct hset_head {
 	//char *typ;
 	UT_hash_handle hh;
 };
+
+
+// **********************************************
+//
+//	String manipulation functions
+//
+// ********************************************** 
 
 int mystrcmp(const char *str1, const char *str2) {
 	return strcasecmp(str1, str2) == 0;
@@ -60,12 +67,12 @@ int parse_type(char *typ) {
 			if (p == 0) {
 				// only trim paren of element if it is a tuple
 				// else, restore the beginning paren (e.g. sets)
-				if (i+2 >= len || typ[i+2] == '*') typ[i] = ' ';
+				if (i+2 >= len || typ[i+2] == '*') typ[i] = '\0';
 				else typ[curr_s] = '(';
 			}
 			continue;
 		} else if (c == '(') {
-			if (p == 0) typ[i] = ' ';
+			if (p == 0) typ[i] = '\0';
 			p++;
 			continue;
 		}
@@ -220,7 +227,8 @@ char *string_of(void *val, char *typ) {
 			
 			key_len += snprintf(key+key_len, typ_cmp_size, "%s, ", deref_val);
 
-		} else if (mystrcmp(ctyp+t_l-3, types[SET])) {
+		} else if (mystrcmp(ctyp+t_l-3, types[SET]) || 
+							 mystrcmp(ctyp+t_l-3, types[MAP])) {
 			char *temp_ctyp = strdup(ctyp);
 			// remove ' set' from end of type str
 			temp_ctyp[t_l-4] = '\0';
@@ -312,6 +320,13 @@ char *string_interpolation(char *frmt, int num, ...) {
   return ret;
 }
 
+
+// **********************************************
+//
+//	Memory related functions
+//
+// ********************************************** 
+
 /* frees variable arguments */
 void free_args(int num, ...) {
 	va_list args;
@@ -328,35 +343,8 @@ void free_args(int num, ...) {
   va_end(args);
 }
 
-struct hset_head *init_hset() {
-	//fprintf(stderr, "init_hset called\n");
-	struct hset_head *hash_set = NULL;
-	return hash_set;
-}
-
-void destroy_hset(struct hset_head *hash_set) {
-	struct hset_head *curr, *temp;
-	HASH_ITER(hh, hash_set, curr, temp) {
-		HASH_DEL(hash_set, curr);
-		free(curr->val_p);
-		free(curr->val_ts);
-		free(curr);
-	}
-}
-
-void print_hset(struct hset_head *hash_set) {
-	struct hset_head *curr, *temp;
-	printf("{ ");
-	HASH_ITER(hh, hash_set, curr, temp) {
-		printf("%s ", curr->val_ts);
-	}
-	printf("}\n");
-}
-
-
-void *alloc_copy(void *val_p, char *typ) {
-	void *new_val_p;
-
+/* Get size in bytes of type */
+int size_of_type(char *typ) {
 	// copy typ so we can modify it
 	char *ctyp = strdup(typ);
 	char *og_ctyp = ctyp;
@@ -369,7 +357,7 @@ void *alloc_copy(void *val_p, char *typ) {
 	int t_n = parse_type(ctyp);
 
 	// used to index struct like array
-	size_t val_size = 0;
+	size_t typ_size = 0;
 	size_t max_size = 0;
 	while (t_n --> 0) {
 		// skip to beginning of next type
@@ -377,36 +365,36 @@ void *alloc_copy(void *val_p, char *typ) {
 
 		if (mystrcmp(ctyp, types[INT])) {
 			size_t m_size = sizeof(int);
-			unsigned int remainder = val_size % m_size;
-			if (remainder != 0)	val_size += m_size - remainder;
-			val_size += m_size;
+			unsigned int remainder = typ_size % m_size;
+			if (remainder != 0)	typ_size += m_size - remainder;
+			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
 		}
 		else if (mystrcmp(ctyp, types[REAL])) {
 			size_t m_size = sizeof(float);
-			unsigned int remainder = val_size % m_size;
-			if (remainder != 0)	val_size += m_size - remainder;
-			val_size += m_size;
+			unsigned int remainder = typ_size % m_size;
+			if (remainder != 0)	typ_size += m_size - remainder;
+			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
 		} 
 		else if (mystrcmp(ctyp, types[CHAR])) {
 			size_t m_size = sizeof(char);
-			unsigned int remainder = val_size % m_size;
-			if (remainder != 0)	val_size += m_size - remainder;
-			val_size += m_size;
+			unsigned int remainder = typ_size % m_size;
+			if (remainder != 0)	typ_size += m_size - remainder;
+			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
 		} 
 		else if (mystrcmp(ctyp, types[BOOL])) { 
 			size_t m_size = sizeof(int);
-			unsigned int remainder = val_size % m_size;
-			if (remainder != 0)	val_size += m_size - remainder;
-			val_size += m_size;
+			unsigned int remainder = typ_size % m_size;
+			if (remainder != 0)	typ_size += m_size - remainder;
+			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
 		} else if (mystrcmp(ctyp, types[STRING])) {
 			size_t m_size = sizeof(char *);
-			unsigned int remainder = val_size % m_size;
-			if (remainder != 0)	val_size += m_size - remainder;
-			val_size += m_size;
+			unsigned int remainder = typ_size % m_size;
+			if (remainder != 0)	typ_size += m_size - remainder;
+			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
 		}
 
@@ -415,15 +403,43 @@ void *alloc_copy(void *val_p, char *typ) {
 		ctyp += t_l;
 	}
 
-	unsigned int remainder = val_size % max_size;
-	if (remainder != 0)	val_size += max_size - remainder;
+	unsigned int remainder = typ_size % max_size;
+	if (remainder != 0)	typ_size += max_size - remainder;
 
 	free(og_ctyp);
 
-	new_val_p = malloc(val_size);
-	memcpy(new_val_p, val_p, val_size);
+	return typ_size;
+}
+
+void *alloc_copy(void *val_p, char *typ) {
+	int size = size_of_type(typ);
+
+	void *new_val_p = malloc(size);
+	memcpy(new_val_p, val_p, size);
 
 	return new_val_p;
+}
+
+
+// **********************************************
+//
+//	HashSet functions
+//
+// ********************************************** 
+
+struct hset_head *init_hset() {
+	struct hset_head *hash_set = NULL;
+	return hash_set;
+}
+
+void destroy_hset(struct hset_head *hash_set) {
+	struct hset_head *curr, *temp;
+	HASH_ITER(hh, hash_set, curr, temp) {
+		HASH_DEL(hash_set, curr);
+		free(curr->val_p);
+		free(curr->val_ts);
+		free(curr);
+	}
 }
 
 struct hset_head *copy_hset(struct hset_head *hash_set, char* typ) {
@@ -447,22 +463,19 @@ struct hset_head *_add_val(char *val_ts, void *val_p,
 	void *new_val_p, *new_val_ts;
 	HASH_FIND(hh, hash_set, val_ts, strlen(val_ts), temp);
 	if (temp == NULL) {
-		//fprintf(stderr, "_add_val, key does not exist\n");
 		temp = malloc(sizeof(struct hset_head));
 		new_val_p = alloc_copy(val_p, typ);
 		temp->val_ts = val_ts;
 		temp->val_p = new_val_p;
 		HASH_ADD_KEYPTR(hh, hash_set, (temp->val_ts), strlen(temp->val_ts), temp);
-		//fprintf(stderr, "_add_val, key %s added\n", val_ts);
 	}
 	return hash_set;
 }
 
 struct hset_head *add_val(void *val, char *typ, struct hset_head *hash_set) {
-	//fprintf(stderr, "add_val called\n");
 	struct hset_head *hset_new = copy_hset(hash_set, typ);
 	char *key = string_of(val, typ);
-	//fprintf(stderr, "add_val, key %s insert\n", key);
+
 	return _add_val(key, val, typ, hset_new);
 }
 
@@ -494,13 +507,9 @@ struct hset_head *del_val(void *val, char *typ, struct hset_head *hash_set) {
 
 struct hset_head *hset_union(struct hset_head *left, struct hset_head *right, char *typ) {
 	struct hset_head *hset_new = copy_hset(left, typ);
-	//fprintf(stderr, "in union, copied: ");
-	//print_hset(hset_new);
-	//fprintf(stderr, "in union, to copy: ");
-	//print_hset(right);
+	
 	struct hset_head *curr, *temp;
 	HASH_ITER(hh, right, curr, temp) {
-		//fprintf(stderr, "in union, adding %s\n", curr->val_ts);
 		_add_val(curr->val_ts, curr->val_p, typ, hset_new);
 	}
 	return hset_new;
@@ -516,14 +525,62 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	return hset_new;
 }
 
-// int main() {
-// 	// int x = 4;
-// 	// float d = 3.14;
-// 	// char a = 'a';
-// 	// printf("%s\n", string_of(&x, "int"));
-// 	// printf("%s\n", string_of(&d, "real"));
-// 	// printf("%s\n", string_of(&a, "char"));
-// 	// printf("%s\n", string_of(&x, "bool"));
-// 	struct {int x; float y; char *z; char w;} s = {3,4.3, "hello", '9'};
-// 	printf("%s\n", string_of(&s, "(int * real * string * char)"));
-// }
+/* Get value from map hset using key of type typ
+ */
+void *get_val(struct hset_head *hash_set, void *key_val, char *typ) {
+	char *key = string_of(key_val, typ);
+	struct hset_head *temp;
+	HASH_FIND(hh, hash_set, key, strlen(key), temp);
+	
+	if (temp == NULL) {
+		fprintf(stderr, "Key not in map: %s\n", key);
+		exit(EXIT_FAILURE);
+	}
+
+	free(key);
+	return temp->val_p;
+}
+
+/* Create hash set from variable number of n arguments
+ * all args must be of type typ. Can specify if values
+ * needs to be stored like arrays
+ */
+struct hset_head *hset_from_list(char *typ, int is_map, int n, ...) {
+	struct hset_head *hash_set = init_hset();
+
+	va_list args;
+	/* initialize valist for num number of arguments */
+  va_start(args, n);
+
+  char *ctyp = strdup(typ);
+  char *og_ctyp = ctyp;
+
+  // trim parentheses
+  int t_l = strlen(ctyp);
+	if (ctyp[t_l-1] == ')') {
+		ctyp[t_l-1] = '\0';
+		ctyp++;
+	}
+
+  if (is_map) {
+  	// parse_type separates elements of tuple
+  	// by inserting null chars, effectively trimming
+  	// the second type of this tuple
+  	parse_type(ctyp);
+  }
+
+  /* access all the arguments assigned to valist */
+  char *curr;
+  for (int i = 0; i < n; i++) {
+  	curr = va_arg(args, void*);
+
+  	char *key = string_of(curr, ctyp);
+  	hash_set = _add_val(key, curr, typ, hash_set);
+  }
+  /* clean memory reserved for valist */
+  va_end(args);
+
+  free(og_ctyp);
+
+	return hash_set;
+}

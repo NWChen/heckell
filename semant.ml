@@ -27,10 +27,24 @@ let check stmts =
   let add_to_scope var typ scope = 
     {scope with symb = StringMap.add var typ scope.symb} 
   in
+  let check_map_set_type mt st =
+    match st with
+    | Set(Tuple [t1'; t2']) -> (
+      match mt with
+      | Map(t1, t2) ->
+        if t1 = t1' && t2 = t2' then true else false
+      | _ -> false )
+    | _ -> false
+  in
   let check_asn left_t right_t err = match right_t with
     | Set(PrimTyp(Char)) | Set(PrimTyp(Bool)) | Set(PrimTyp(Real))
           -> if left_t = PrimTyp(Int) then ignore(left_t)
-    | _ -> if left_t = right_t then ignore(left_t) else raise (Failure err)
+    | _ -> 
+      match left_t with
+      | Map(_, _) ->  
+        if check_map_set_type left_t right_t then ignore(left_t) else raise (Failure err)
+      | _ ->
+        if left_t = right_t then ignore(left_t) else raise (Failure err)
   in 
   (* Return a semantically-checked expression, i.e., with a type *)
   (* TODO: correct expr *)
@@ -150,6 +164,12 @@ let check stmts =
             string_of_typ e_typ ^ " in " ^ string_of_typ ex
         in let _ = check_asn in_typ e_typ err
         in (out_typ, SFuncCall(var, sexpr))
+      | Map(in_typ, out_typ) as ex -> 
+        let e_typ = fst sexpr in
+        let err = "illegal assignment " ^ string_of_typ in_typ ^ " = " ^ 
+            string_of_typ e_typ ^ " in " ^ string_of_typ ex
+        in let _ = check_asn in_typ e_typ err
+        in (out_typ, SMapCall(var, sexpr))
       | _ -> raise (Failure ("non-function type stored")) )
     | _ -> raise (Failure ("not matched"))
   
@@ -203,7 +223,17 @@ let check stmts =
       | Expr e -> (SExpr (expr e symbols)) :: (append_sstmt symbols t)
       | Asn(vars, e) -> (
         match vars with 
-        | [var] -> (SAsn (var, expr e symbols )) :: (append_sstmt symbols t)
+        | [var] -> 
+          (* return exp if not map, else convert set to map *)
+          let check_is_map (typ, exp) =
+            let right_t = type_of_identifier var symbols in
+            let is_map =
+              check_map_set_type right_t typ
+            in match exp with
+            | SSetLit(el) when is_map -> (right_t, SMapLit(el))
+            | _ -> (typ, exp)
+          in
+          (SAsn (var, check_is_map (expr e symbols) )) :: (append_sstmt symbols t)
         | _ ->
           let rec expand_asn vars i = 
             let acc = AggAccessor(e, Lit(i)) in
