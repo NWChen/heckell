@@ -1,0 +1,6 @@
+let w = "hello world";
+
+let f : string -> int;
+f(s) = print("\(s[2])") end
+
+f(w);

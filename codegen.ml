@@ -327,7 +327,7 @@ let translate (stmt_list) =
             L.build_load gep_ptr "" builder
           | _ -> raise(Failure "semant shouldn't have allowed non-literal int index for tuple") 
           )
-        | A.Array(_) -> 
+        | A.Array(_) | A.String -> 
           let idx = expr builder var_map e2 in
           let pointer = L.build_gep llptr [|idx|] "tmp" builder in
           L.build_load pointer "tmp" builder
@@ -420,19 +420,20 @@ let translate (stmt_list) =
               | A.Func(in_t, out_t) -> (* Function declaration. *)
                 let name_formals formals = List.mapi (fun i _ -> n ^ (string_of_int i)) formals in (* we only know their type so far - thus formals are temporarily named n0, n1, ... where n = function name *) (* TODO check these temp names in Sasn. *)
                 let formal_typs = match in_t with
-                  | A.PrimTyp(_) -> [in_t]
+                  (* | A.PrimTyp(_) -> [in_t] *)
                   | A.Tuple(l) -> l
+                  | _ -> [in_t]
                 in
                 let formal_typs = Array.of_list (List.map (fun t -> ltype_of_typ t) formal_typs) in
                 let func_typ = L.function_type (ltype_of_typ out_t) formal_typs in
                 let func_def = L.define_function n func_typ the_module in
                 let this_function = L.builder_at_end context (L.entry_block func_def) in
                 let var_map = (match in_t with
-                  | A.PrimTyp(_) -> let [formal] = name_formals [in_t] in
-                    StringMap.add formal (allocate formal in_t this_function) var_map
                   | A.Tuple(l) -> let formals = name_formals l in
-                    List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l) in
-                StringMap.add n func_def var_map
+                    List.fold_left2 (fun m n' t' -> StringMap.add n' (allocate n' t' this_function) m) var_map formals l
+                  | _ -> let [formal] = name_formals [in_t] in
+                    StringMap.add formal (allocate formal in_t this_function) var_map )
+                in StringMap.add n func_def var_map
               | _ -> let addr = L.build_alloca (ltype_of_typ t) n builder in
                 StringMap.add n addr var_map
             ) in (builder, var_map)

@@ -102,10 +102,12 @@ let check stmts =
         | false -> raise (Failure ("all elements of set must have type " ^ (string_of_typ set_t)))
         | true -> (Set(set_t), SSetLit (sexpr_list))
       )
-    (* | SetBuilder(epot, st, ex) ->
+    (* | SetBuilder(eopt, st, ex) ->
+      let expr_to_func e =
+
       match st with
-      | Iter(sl, ex)
-      TODO: make iter into expression parser-wise and choose between iter and member
+      | Iter(sl, ex) *)
+      (*TODO: make iter into expression parser-wise and choose between iter and member
        *)
     | ArrayLit l ->
       let arr_t = match l with
@@ -133,6 +135,7 @@ let check stmts =
           | _ -> raise(Failure("can only index tuple with int literals"))
         ) 
         | Array(arr_t) -> (arr_t, SAggAccessor((e1_t, se1), (e2_t, se2)))
+        | String -> (PrimTyp(Char), SAggAccessor((e1_t, se1), (e2_t, se2)))
         | _ -> raise(Failure("cannot index object of type " ^ string_of_typ  e1_t)) 
       )
       | _ -> raise(Failure("need int to index collection"))
