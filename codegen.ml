@@ -71,17 +71,14 @@ let translate (stmt_list) =
       | SFuncCall ("print", e) -> L.build_call printf_func [| int_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall ("print_string", e) -> L.build_call printf_func [| str_format_str ; (expr builder var_map e) |] "printf" builder
       | SFuncCall (s, e) ->
-        let result = s ^ "_result" and f = L.define_function s (ltype_of_typ out_typ) the_module in
+        let result = s ^ "_result" and f = StringMap.find s var_map in (* f: llvalue representing function <s> *)
         L.build_call f (match e with
-        | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el) 
-        | x -> [| expr builder var_map x |]
+          | (A.Tuple(actual_typs), STupleLit(el)) -> Array.of_list (List.map (fun arg -> expr builder var_map arg) el)  (* TODO revise el evaluation *)
+          | x -> [| expr builder var_map x |]
         ) result builder
-      (*| SFuncDef (args, stmts) ->
-        let build_function_decl =
-          let name = 
-        in let build_function_body ...
-        in let locals = ...
-        in *)
+
+        (* let result = s ^ "_result" and f = L.define_function s (ltype_of_typ out_typ) the_module in
+        L.build_call f (match e with *)
       | SBinop (e1, op, e2) ->
         let (t, _) = e1
         and e1' = expr builder var_map e1
