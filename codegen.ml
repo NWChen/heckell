@@ -270,6 +270,7 @@ let translate (stmt_list) =
         else if t = A.Set(A.PrimTyp(A.Int)) then match op with
             A.Add     -> L.build_call hset_union_func [| e1' ; e2' ; int_str |] "hset_union" builder
           | A.Sub     -> L.build_call hset_diff_func [| e1' ; e2' ; int_str |] "hset_diff" builder 
+          | A.Member  -> L.build_call 
         else (match op with
         | A.Add     -> L.build_add
         | A.Sub     -> L.build_sub
