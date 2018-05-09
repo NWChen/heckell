@@ -90,6 +90,25 @@ struct hset_head *init_hset() {
 	return hash_set;
 }
 
+void destroy_hset(struct hset_head *hash_set) {
+	struct hset_head *curr, *temp;
+	HASH_ITER(hh, hash_set, curr, temp) {
+		HASH_DEL(hash_set, curr);
+		free(curr->val_p);
+		free(curr->val_ts);
+		free(curr);
+	}
+}
+
+void print_hset(struct hset_head *hash_set) {
+	struct hset_head *curr, *temp;
+	printf("{ ");
+	HASH_ITER(hh, hash_set, curr, temp) {
+		printf("%s ", curr->val_ts);
+	}
+	printf("}\n");
+}
+
 void *alloc_copy(void *val_p, char *typ) {
 	void *new_val_p;
 	if (mystrcmp(typ, "Int")) {
@@ -118,13 +137,10 @@ void *alloc_copy(void *val_p, char *typ) {
 	return new_val_p;
 }
 
-
-struct hset_head *_add_val(char *val_ts, void *val_p, 
-						  char *typ, struct hset_head *hash_set) {
+struct hset_head *copy_hset(struct hset_head *hash_set, char* typ) {
 	struct hset_head *hset_new = init_hset();
 	struct hset_head *curr, *copied, *temp;
 	void *new_val_p, *new_val_ts;
-	//fprintf(stderr, "_add_val, copy to new hashset\n");
 	HASH_ITER(hh, hash_set, curr, temp) {
 		copied = malloc(sizeof(struct hset_head));
 		new_val_p = alloc_copy(curr->val_p, typ);
@@ -133,27 +149,33 @@ struct hset_head *_add_val(char *val_ts, void *val_p,
 		copied->val_p = new_val_p;
 		HASH_ADD_KEYPTR(hh, hset_new, (copied->val_ts), strlen(copied->val_ts), copied);
 	}
+	return hset_new;
+}
 
-	HASH_FIND(hh, hset_new, val_ts, strlen(val_ts), temp);
+struct hset_head *_add_val(char *val_ts, void *val_p, 
+						  char *typ, struct hset_head *hash_set) {
+	struct hset_head *temp;
+	void *new_val_p, *new_val_ts;
+	HASH_FIND(hh, hash_set, val_ts, strlen(val_ts), temp);
 	if (temp == NULL) {
 		//fprintf(stderr, "_add_val, key does not exist\n");
 		temp = malloc(sizeof(struct hset_head));
 		new_val_p = alloc_copy(val_p, typ);
 		temp->val_ts = val_ts;
 		temp->val_p = new_val_p;
-		HASH_ADD_KEYPTR(hh, hset_new, (temp->val_ts), strlen(temp->val_ts), temp);
+		HASH_ADD_KEYPTR(hh, hash_set, (temp->val_ts), strlen(temp->val_ts), temp);
 		//fprintf(stderr, "_add_val, key %s added\n", val_ts);
 	}
-	return hset_new;
+	return hash_set;
 }
 
 struct hset_head *add_val(void *val, char *typ, struct hset_head *hash_set) {
 	//fprintf(stderr, "add_val called\n");
+	struct hset_head *hset_new = copy_hset(hash_set, typ);
 	char *key = string_of(val, typ);
 	//fprintf(stderr, "add_val, key %s insert\n", key);
-	return _add_val(key, val, typ, hash_set);
+	return _add_val(key, val, typ, hset_new);
 }
-
 
 struct hset_head *_del_val(char *val_ts, char *typ, struct hset_head *hash_set) {
 	/* 
@@ -161,74 +183,46 @@ struct hset_head *_del_val(char *val_ts, char *typ, struct hset_head *hash_set) 
 	 * a) key exists and will not be added
 	 * b) key added with NULL value and will be deleted when found
 	 */
-	struct hset_head *hset_new = _add_val(val_ts, (void *)NULL, typ, hash_set);
 	struct hset_head *temp;
-	HASH_FIND(hh, hset_new, val_ts, strlen(val_ts), temp);
+	HASH_FIND(hh, hash_set, val_ts, strlen(val_ts), temp);
 
 	if (temp != NULL) {
-		HASH_DEL(hset_new, temp);
+		HASH_DEL(hash_set, temp);
 		free(temp->val_p);
 		free(temp->val_ts);
 		free(temp);
 	}
-	return hset_new;
+	return hash_set;
 }
 
 struct hset_head *del_val(void *val, char *typ, struct hset_head *hash_set) {
+	struct hset_head *hset_new = copy_hset(hash_set, typ);
 	char *key = string_of(val, typ);
-	struct hset_head *temp = _del_val(key, typ, hash_set);
+	struct hset_head *temp = _del_val(key, typ, hset_new);
 	free(key);
 	return temp;
 }
 
-void destroy_hset(struct hset_head *hash_set) {
+struct hset_head *hset_union(struct hset_head *left, struct hset_head *right, char *typ) {
+	struct hset_head *hset_new = copy_hset(left, typ);
+	//fprintf(stderr, "in union, copied: ");
+	//print_hset(hset_new);
+	//fprintf(stderr, "in union, to copy: ");
+	//print_hset(right);
 	struct hset_head *curr, *temp;
-	HASH_ITER(hh, hash_set, curr, temp) {
-		HASH_DEL(hash_set, curr);
-		free(curr->val_p);
-		free(curr->val_ts);
-		free(curr);
+	HASH_ITER(hh, right, curr, temp) {
+		//fprintf(stderr, "in union, adding %s\n", curr->val_ts);
+		_add_val(curr->val_ts, curr->val_p, typ, hset_new);
 	}
+	return hset_new;
 }
 
-void print_hset(struct hset_head *hash_set) {
+
+struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, char *typ) {
+	struct hset_head *hset_new = copy_hset(left, typ);
 	struct hset_head *curr, *temp;
-	printf("{ ");
-	HASH_ITER(hh, hash_set, curr, temp) {
-		printf("%s ", curr->val_ts);
+	HASH_ITER(hh, right, curr, temp) {
+		hset_new = _del_val(curr->val_ts, typ, hset_new);	
 	}
-	printf("}\n");
+	return hset_new;
 }
-
-#ifdef BUILD_TEST
-int main() {
-	int zero = 0;
-	int four = 4;
-	int eight = 8;
-	int ten = 10;
-	struct hset_head *hset1 = init_hset();
-	struct hset_head *hset2 = add_val((void *)&four, "int", hset1);
-	printf("2: ");
-	print_hset(hset2);
-	struct hset_head *hset3 = add_val((void *)&zero, "int", hset2);
-	printf("3: ");
-	print_hset(hset3);
-	struct hset_head *hset4 = add_val((void *)&ten, "int", hset3);
-	printf("4: ");
-	print_hset(hset4);
-	struct hset_head *hset5 = del_val((void *)&four, "int", hset4);
-	printf("5: ");
-	print_hset(hset5);
-	printf("6: ");
-	struct hset_head *hset6 = add_val((void *)&hset4, "set", hset4);
-	print_hset(hset6);
-	destroy_hset(hset1);
-	destroy_hset(hset2);
-	destroy_hset(hset3);
-	destroy_hset(hset4);
-	destroy_hset(hset5);
-	destroy_hset(hset6);
-
-	return 0;
-}
-#endif
