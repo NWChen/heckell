@@ -1,0 +1,7 @@
+let s1 : int set;
+s1 = {1,2,3};
+
+let b : bool;
+b = 7 in s1;
+
+print("\(b)");
