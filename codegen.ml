@@ -98,6 +98,21 @@ let translate (stmt_list) =
   let print_hset_func : L.llvalue =
       L.declare_function "print_hset" print_hset_t the_module in
 
+  let hset_len_t : L.lltype =
+      L.var_arg_function_type i32_t [| str_t |] in
+  let hset_len_func : L.llvalue =
+      L.declare_function "hset_len" hset_len_t the_module in
+
+  let get_next_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t |] in
+  let get_next_func : L.llvalue =
+      L.declare_function "get_next" get_next_t the_module in
+
+  let get_val_t : L.lltype =
+      L.var_arg_function_type str_t [| str_t |] in
+  let get_val_func : L.llvalue =
+      L.declare_function "get_val" get_val_t the_module in
+
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Make the LLVM module "aware" of the main function *)
@@ -321,6 +336,55 @@ let translate (stmt_list) =
             let merge_bb = L.append_block context "merge" the_function in
             let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
             (L.builder_at_end context merge_bb, var_map)
+        | SFor (n, a, body) -> 
+            let base_addr = expr builder var_map a in
+            let len = match (snd a) with
+                SArrayLit(x) -> List.length x
+              | SArrayRange(e1, i, e2) ->
+                (match i with
+                    Some x -> List.length (build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2)
+                  | None -> List.length (build_list e1 1 e2))
+              | SSetLit(x) -> List.length x
+              | _ -> raise (Failure "incorrect type")
+            in
+            let var = L.build_alloca i32_t n builder in (* hardcoded type *)
+
+            match (snd a) with
+              | SArrayLit(_) | SArrayRange(_) -> 
+                  let rec for_body_arr i len = 
+                    if i < len then
+                      let offset = L.const_int i32_t i in
+                      let arr_ptr = L.build_gep base_addr [| offset |] "val_ptr" builder in
+                      let arr_val = L.build_load arr_ptr "new_val" builder in
+
+                      let _ = L.build_store arr_val var builder in
+
+                      let new_var_map = StringMap.add n var var_map in
+                      List.fold_left stmt_builder (builder, new_var_map) body;
+                      for_body_arr (i + 1) len
+                    else
+                      (builder, var_map)
+                  in
+                  for_body_arr 0 len
+              | SSetLit(_) -> 
+                  let rec for_body_sets i len curr =
+                    if i < len then
+                      let set_val_ptr = L.build_call get_val_func [| curr |] "get_val" builder in
+                      let bitcast = L.build_bitcast set_val_ptr intp_t "bitcast" builder in
+                      let set_val = L.build_load bitcast "new_val" builder in
+
+                      let _ = L.build_store set_val var builder in
+
+                      let new_var_map = StringMap.add n var var_map in
+                      List.fold_left stmt_builder (builder, new_var_map) body;
+
+                      let next = L.build_call get_next_func [| curr |] "get_next" builder in
+                      for_body_sets (i + 1) len next
+
+                    else
+                      (builder, var_map)
+                  in
+                  for_body_sets 0 len base_addr
         | _ -> to_imp "Statement not yet handled"
 
     in stmt_builder (builder, var_map) stmt

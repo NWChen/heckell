@@ -79,6 +79,7 @@ rule tokenize = parse
 | "then"    { THEN }
 | "else"    { ELSE }
 | "while"   { WHILE }
+| "for"     { FOR }
 | "do"      { DO }
 | '.'       { DOT }
 | "get"     { GET }

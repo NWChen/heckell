@@ -226,3 +226,16 @@ struct hset_head *hset_diff(struct hset_head *left, struct hset_head *right, cha
 	}
 	return hset_new;
 }
+
+
+int hset_len(struct hset_head *hash_set) {
+	return HASH_COUNT(hash_set);
+}
+
+void *get_next(struct hset_head *curr) {	
+	return (curr != NULL) ? (void *) curr->hh.next : NULL;
+}
+
+void *get_val(struct hset_head *curr) {
+	return curr->val_p;
+}

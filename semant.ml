@@ -192,6 +192,10 @@ let check stmts =
       | Expr e -> check_stmt tail symbols  
       | If(p, b1, b2) -> check_bool_expr p; check_stmt b1 symbols; check_stmt b2 symbols
       | While(p, s) -> check_bool_expr p; check_stmt s symbols
+      | For(n, p, s) ->
+        let t = PrimTyp(Int) in
+        let map = add_to_scope n t symbols in
+        check_stmt s map(* TODO need to check type of p and that n is var *)
 
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
@@ -213,6 +217,9 @@ let check stmts =
       | While(p, s) -> 
         let (tp, se) = expr p symbols in
         SWhile((tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
+      | For(n, p, s) ->
+         let (tp, se) = expr p symbols in
+         SFor(n, (tp, se), append_sstmt symbols s) :: (append_sstmt symbols t)
     )
     | [] -> []
   in
