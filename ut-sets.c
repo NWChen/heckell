@@ -390,12 +390,16 @@ int size_of_type(char *typ) {
 			if (remainder != 0)	typ_size += m_size - remainder;
 			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
-		} else if (mystrcmp(ctyp, types[STRING])) {
+		} else if (mystrcmp(ctyp, types[STRING]) ||
+							 mystrcmp(ctyp, types[SET])) {
 			size_t m_size = sizeof(char *);
 			unsigned int remainder = typ_size % m_size;
 			if (remainder != 0)	typ_size += m_size - remainder;
 			typ_size += m_size;
 			if (max_size < m_size) max_size = m_size;
+		} else {
+			// Tuple
+			typ_size += size_of_type(ctyp);
 		}
 
 		// skip to end of curr type
@@ -542,6 +546,25 @@ void *find_val(struct hset_head *hash_set, void *key_val, char *typ) {
 	return temp->val_p;
 }
 
+
+struct hset_head *hset_builder(struct hset_head *hset, char *typ, int pred(void *)) {
+	struct hset_head *hset_new = init_hset();
+	struct hset_head *curr, *copied, *temp;
+	void *new_val_p, *new_val_ts;
+	HASH_ITER(hh, hset, curr, temp) {
+		if (pred(curr->val_p)) {
+			copied = malloc(sizeof(struct hset_head));
+			new_val_p = alloc_copy(curr->val_p, typ);
+			new_val_ts = strdup(curr->val_ts);
+			copied->val_ts = new_val_ts;
+			copied->val_p = new_val_p;
+			HASH_ADD_KEYPTR(hh, hset_new, (copied->val_ts), strlen(copied->val_ts), copied);
+		}
+	}
+	return hset_new;
+}
+
+
 /* Create hash set from variable number of n arguments
  * all args must be of type typ. Can specify if values
  * needs to be stored like arrays
@@ -570,11 +593,17 @@ struct hset_head *hset_from_list(char *typ, int is_map, int n, ...) {
   	parse_type(ctyp);
   }
 
+  while (*ctyp == 0) ctyp++;
+
   /* access all the arguments assigned to valist */
   char *curr;
   for (int i = 0; i < n; i++) {
   	curr = va_arg(args, void*);
-
+  	t_l = strlen(ctyp);
+  	if (ctyp[t_l-1] == ')') {
+			ctyp[t_l-1] = '\0';
+			ctyp++;
+		}
   	char *key = string_of(curr, ctyp);
   	hash_set = _add_val(key, curr, typ, hash_set);
   }
@@ -606,3 +635,4 @@ int has_key(struct hset_head *hash_set, void *val_p, char *typ) {
 	free(val_ts);
 	return (temp != NULL);
 }
+
