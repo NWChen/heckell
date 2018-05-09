@@ -373,8 +373,6 @@ let translate (stmt_list) =
                       let bitcast = L.build_bitcast set_val_ptr intp_t "bitcast" builder in
                       let set_val = L.build_load bitcast "new_val" builder in
 
-(*                       let _ = print_string (L.string_of_llvalue set_val ^ "\n") in
-                      let _ = print_string (L.string_of_llvalue set_val_ptr) in *)
                       let _ = L.build_store set_val var builder in
 
                       let new_var_map = StringMap.add n var var_map in
