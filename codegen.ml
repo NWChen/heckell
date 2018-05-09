@@ -46,6 +46,7 @@ let translate (stmt_list) =
     | A.PrimTyp(A.Real) -> f32_t
     | A.String          -> str_t
     | A.Set(_)          -> ptr_t
+    | A.Array(_)        -> intp_t
     | A.Map(_)          -> ptr_t
     | A.Tuple(typs)     -> 
       L.struct_type context (Array.of_list (List.map ltype_of_typ typs))
@@ -176,6 +177,7 @@ let translate (stmt_list) =
       L.build_global_stringptr (string_of_typ set) "set" builder
     | A.Map(t1, t2)     ->
       L.build_global_stringptr ("(" ^ string_of_typ (A.Tuple [t1;t2]) ^ " map)") "map" builder
+    | _  -> int_str
   in
   let lookup n map = try StringMap.find n map
                      with Not_found -> raise (Failure ("ERROR: variable " ^ n ^ " not found."))
