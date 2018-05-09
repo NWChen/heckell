@@ -435,8 +435,7 @@ let translate (stmt_list) =
                   let instr = StringMap.find f m in
                   (StringMap.add f' instr (StringMap.remove f m))
                 ) var_map formals formals' in
-                let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in
-                let _ = List.iter2 (fun f f' -> L.replace_all_uses_with f f') formal_instrs formal_instrs' in (* Replace temporary (<n>0, <n>1, ...) formal names in LLVM with new (user-specified) names. *)
+                (*let formal_instrs' = List.map (fun f' -> StringMap.find f' var_map) formals' in*)
                 (* Generate LLVM in the basic block entered by function <n> *)
                 let this_function = StringMap.find n var_map in
                 let builder = L.builder_at_end context (L.entry_block this_function) in
