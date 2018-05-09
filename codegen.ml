@@ -165,7 +165,7 @@ let translate (stmt_list) =
                 let formals = List.mapi (fun i _ -> n ^ (string_of_int i)) args in
                 let formals' = List.map (fun arg -> match arg with (* Formals, now attached to names, specified in function assignment(definition). *)
                   | SDecl (n, _) -> n
-                  | _ -> to_imp "Improperly specified formal (expected SDecl)."
+                  | _ -> raise (Failure ("Improperly specified argument (expected declaration)."))
                 ) args in
                 let formal_instrs = List.map (fun f -> StringMap.find f var_map) formals in
                 let var_map = List.fold_left2 (fun m f f' -> (* Replace temporary formal name bindings in `var_map` with new names. *)
@@ -177,8 +177,19 @@ let translate (stmt_list) =
                 (* Generate LLVM in the basic block entered by function <n> *)
                 let this_function = StringMap.find n var_map in
                 let builder = L.builder_at_end context (L.entry_block this_function) in
+                let _ = List.map2 (fun (SDecl (n, t)) p ->
+                  L.build_store p (StringMap.find n var_map) builder
+                ) args (Array.to_list (L.params this_function)) in
                 let (builder, _) = List.fold_left stmt_builder (builder, var_map) stmts in
-                let return_instr = L.build_ret (L.const_int (ltype_of_typ out_t) 0) in
+
+                (* Return latest-evaluated top-level (no children, e.g. in `If`) `expr` *)
+                let rec return_expr revd_stmts = match revd_stmts with
+                  | [] -> (A.PrimTyp(A.Int), SLit(0)) (* `heckell` returns `0` when no expression inside a function can be evaluated (nothing to return). *)
+                  | SExpr(e') :: _ -> e'
+                  | _ :: tl -> return_expr tl
+                in  
+                let e' = expr builder var_map (return_expr (List.rev stmts)) in
+                let return_instr = L.build_ret e' in
                 add_terminal builder return_instr (* TODO fix returns *)
             | _ -> let addr = lookup n var_map in
                 let e' = expr builder var_map sexpr in
