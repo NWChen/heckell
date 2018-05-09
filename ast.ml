@@ -30,6 +30,8 @@ type expr =
   | SetLit of expr list
   | ArrayLit of expr list
   | ArrayRange of expr * expr option * expr
+  | ArrayGet of string * expr
+  | ArrayAt of string * expr * expr
   (* Both expr could be optional *)
   | SetBuilder of expr option * stmt * expr
   | FuncDefNamed of string * string list * stmt list (* name * param ids * function body *)

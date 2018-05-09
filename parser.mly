@@ -5,12 +5,14 @@
 %token LBRACKET RBRACKET 
 %token LPAREN RPAREN
 %token LBRACE RBRACE
+%token DOT
 
 %token LET IN COLON COMMA SEMI DSEMI END ARROW	
 %token EQ NEQ LT LEQ GT GEQ AND OR
 %token INT BOOL REAL CHAR STRING
 %token SET 
 %token ARRAY
+%token GET AT
 
 %token PLUS MINUS TIMES DIVIDE EQUAL PIPE ELLIPSE
 %token IF THEN ELSE WHILE DO
@@ -47,6 +49,7 @@
 %left TIMES DIVIDE
 %right NEG
 %left LPAREN LBRACKET
+%nonassoc DOT
 
 
 %start program
@@ -114,6 +117,7 @@ expr:
 | single_or_tuple       { $1 }
 | LBRACE expr_list RBRACE { SetLit(List.rev $2) }
 | LBRACKET expr_list RBRACKET { ArrayLit(List.rev $2) }
+| arr_op                { $1 }
 | LBRACKET expr_list ELLIPSE expr RBRACKET 
     { match List.rev $2 with
         [e1] -> ArrayRange(e1, None, $4)
@@ -156,6 +160,10 @@ expr:
           | _ -> raise(Failure("iterator expected")) )
     }
   
+arr_op:
+| ID DOT GET LPAREN expr RPAREN              { ArrayGet($1, $5) }
+| ID DOT AT LPAREN expr COMMA expr RPAREN    { ArrayAt($1, $5, $7) }
+
 
 single_or_tuple:
 | LPAREN expr_list_ne RPAREN  { match $2 with 
