@@ -253,7 +253,7 @@ let check stmts =
       | For(n, p, s) ->
         let t = PrimTyp(Int) in
         let map = add_to_scope n t symbols in
-        check_stmt s map(* TODO need to check type of p and that n is var *)
+        check_stmt s map (* TODO need to check type of p and that n is var *)
 
   (* recursively gather sstmt list *)
   and append_sstmt symbols = function
