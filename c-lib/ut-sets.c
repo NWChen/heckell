@@ -241,25 +241,37 @@ struct hset_head *hset_intersect(struct hset_head *left, struct hset_head *right
 	return hset_new;
 }
 
-struct hset_head *set_builder(struct hset_head *hash_set, int (*f)(int)) {
-	struct hset_head *hset_new = init_hset();
-	struct hset_head *curr, *temp;
-	HASH_ITER(hh, hash_set, curr, temp) {
-		if ((*f)(*(int *)curr->val_p)) {
-			hset_new = _add_val(curr->val_ts, curr->val_p, "Int", hset_new);
-		}
-	}
-	return hset_new;
+int hset_len(struct hset_head *hash_set) {
+	return HASH_COUNT(hash_set);
 }
 
-
-void func_pass(struct hset_head *hash_set, void (*f)(char *)) {
-	struct hset_head *hset_new = init_hset();
-	struct hset_head *curr, *temp;
-	HASH_ITER(hh, hash_set, curr, temp) {
-		(*f)((char *)curr->val_ts);
-	}
+void *get_next(struct hset_head *curr) {	
+	return (curr != NULL) ? (void *) curr->hh.next : NULL;
 }
+
+void *get_val(struct hset_head *curr) {
+	return curr->val_p;
+}
+
+// struct hset_head *set_builder(struct hset_head *hash_set, int (*f)(int)) {
+// 	struct hset_head *hset_new = init_hset();
+// 	struct hset_head *curr, *temp;
+// 	HASH_ITER(hh, hash_set, curr, temp) {
+// 		if ((*f)(*(int *)curr->val_p)) {
+// 			hset_new = _add_val(curr->val_ts, curr->val_p, "Int", hset_new);
+// 		}
+// 	}
+// 	return hset_new;
+// }
+
+
+// void func_pass(struct hset_head *hash_set, void (*f)(char *)) {
+// 	struct hset_head *hset_new = init_hset();
+// 	struct hset_head *curr, *temp;
+// 	HASH_ITER(hh, hash_set, curr, temp) {
+// 		(*f)((char *)curr->val_ts);
+// 	}
+// }
 
 
 int main() {
@@ -274,15 +286,23 @@ int main() {
 	struct hset_head *hsetA5 = add_val((void *)&eight, "int", hsetA4);
 	printf("A: ");
 	print_hset(hsetA5);
-
-	int positive(int val) {
-		return val > 0;
+	printf("iter method: { ");
+	int set_len = hset_len(hsetA5);
+	struct hset_head *curr = hsetA5;
+	int i;
+	for (i = 0; i < set_len; i++) {
+		printf("%d ", *(int *) get_val(curr));
+		curr = get_next(curr);
 	}
+	printf("}\n");
+	// int positive(int val) {
+	// 	return val > 0;
+	// }
 
-	struct hset_head *hsetB1 = init_hset();
-	struct hset_head *hsetB2 = set_builder(hsetA5, &positive);
-	printf("B: ");
-	print_hset(hsetB2);
+	// struct hset_head *hsetB1 = init_hset();
+	// struct hset_head *hsetB2 = set_builder(hsetA5, &positive);
+	// printf("B: ");
+	// print_hset(hsetB2);
 
 /*
 	struct hset_head *hsetB1 = init_hset();
