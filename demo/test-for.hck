@@ -1,0 +1,17 @@
+print("Looping through array [1, 2, 3]");
+
+let x: int array;
+x = [1, 2, 3];
+
+for i in x do
+	print("\(i)");
+end
+
+print("Looping through set {5, 10, 13}");
+
+let x: int set;
+x = {5, 10, 13};
+
+for i in x do
+	print("\(i)");
+end

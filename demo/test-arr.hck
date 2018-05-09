@@ -1,0 +1,23 @@
+let x: int array;
+x = [7, 5 ... 3];
+
+print("constructing array: [7, 5 ... 3]");
+print("first element: \(x.get(0))");
+print("second element: \(x.get(1))");
+print("third element: \(x.get(2))");
+
+let y: int array;
+y = [1 ... 5];
+
+print("constructing array: [1 ... 5]");
+print("first element: \(y.get(0))");
+print("second element: \(y.get(1))");
+print("third element: \(y.get(2))");
+
+let z: int array;
+z = [1, 2, 3];
+
+
+print("mutating first element: y.at(0, 50)");
+y.at(0, 50);
+print("mutated first element: \(y.get(0))");

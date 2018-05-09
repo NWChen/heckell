@@ -1,0 +1,23 @@
+let a: int;
+a = 5;
+
+print("a = 5");
+
+let b: int;
+b = 6;
+
+print("b = 6");
+
+let c: int;
+c = a + 7;
+
+print("c = a + 7 ==> \(c)");
+
+let d: int;
+d = b - 3;
+
+print("d = b - 3 ==> \(d)");
+
+print("3 * d ==> \(3 * d)");
+
+print("c / d ==> \(c / d)");
