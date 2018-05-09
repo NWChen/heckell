@@ -203,7 +203,11 @@ let translate (stmt_list) =
       | SArrayRange(e1, i, e2) ->
         let (arr_t, _) = e1 in
         let lis = match i with
-          | Some x ->  build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2
+          | Some x ->
+              if (get_int_or_float x) == (get_int_or_float e1) then
+                raise (Failure "Second argument of array range must not be the same as the first value")
+              else 
+                build_list e1 ((get_int_or_float x) - (get_int_or_float e1)) e2
           | None -> build_list e1 1 e2
         in
         let addr = L.build_array_alloca (ltype_of_typ arr_t) (L.const_int i32_t (List.length lis)) "tmp" builder in
