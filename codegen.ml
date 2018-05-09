@@ -362,11 +362,12 @@ let translate (stmt_list) =
                 let _ = add_terminal builder return_instr in
                   var_map
 
-            | (_, e) -> let addr = lookup n var_map in
+            | _ -> let (_, e) = sexpr in
+                let addr = lookup n var_map in
                 let e' = expr builder var_map sexpr in
                 match e with
+                  | SArrayLit (x) -> StringMap.add n e' var_map
                   | SArrayRange(e1, i, e2) -> StringMap.add n e' var_map
-                  | SArrayLit(x) -> StringMap.add n e' var_map
                   | _ -> let _ = L.build_store e' addr builder in var_map
             ) in (builder, var_map)
 
