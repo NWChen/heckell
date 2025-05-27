@@ -12,21 +12,21 @@ $ ./heckell < (YOURFILE).hck
 ## Example
 
 ```
-let x: int;
-x = 4;
+let S1 : int set;
+S1 = { 1, 2, 2 };
 
-let y: int;
-y = 6;
+print("Creating set S1 = {1, 2, 2}");
 
-print("Calculating the gcd of \(x) and \(y):");
+let S2 : int set;
+S2 = { 2, 8, 9 };
 
-while x != y do 
-	if x > y then
-		x = x - y;
-	else
-		y = y - x;
-	end
-end
+print("Creating set S2 = {2, 8, 9}");
 
-print("\(x)");
+let S3 : int set;
+S3 = S1 + S2;
+print("S1 + S2 ==> \(S3)");
+
+let S4 : int set;
+S4 = S2 - S1;
+print("S2 - S1 ==> \(S4)");
 ```
