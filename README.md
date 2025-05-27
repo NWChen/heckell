@@ -8,3 +8,25 @@
 $ make
 $ ./heckell < (YOURFILE).hck
 ```
+
+## Example
+
+```
+let x: int;
+x = 4;
+
+let y: int;
+y = 6;
+
+print("Calculating the gcd of \(x) and \(y):");
+
+while x != y do 
+	if x > y then
+		x = x - y;
+	else
+		y = y - x;
+	end
+end
+
+print("\(x)");
+```
